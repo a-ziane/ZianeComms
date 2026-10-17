@@ -1,5 +1,7 @@
 # Task 5 — Connect Retell to ZianeComms
 
+**Structured Disaster follow-up:** use [retell-disaster-extraction.md](retell-disaster-extraction.md) for the new native Selector fields, exact descriptions, production mapping and safe unknown handling. That opt-in contract supersedes the legacy JSON-string/strict-Boolean instructions below for Disaster deployments that map `requested_service`.
+
 ## Verified implementation and remaining setup
 
 The endpoint is `POST /api/webhooks/retell`. It accepts the actual Retell envelope `{ "event": "call_analyzed", "call": { ... } }`, verifies the original request body with `x-retell-signature`, normalizes extraction data, runs the existing Priority Engine, and commits to Supabase. Other signed events (including `call_started` and `call_ended`) are acknowledged without creating cases. Post-call extraction is unavailable on `call_ended`; do not subscribe only to that event.

@@ -40,8 +40,8 @@ export function buildRetellCase(state: CaseState, intake: RetellIntake, context:
     activityLog: existing?.activityLog ?? [], lastRecommendation: undefined,
     retell: { callId: intake.callId, agentId: intake.agentId, status: intake.status, event: intake.event,
       startedAt: intake.startedAt, endedAt: intake.endedAt, analysisPending: intake.analysisPending,
-      outcomes: { emergencyGuidanceProvided: intake.emergencyGuidance, humanRequested: intake.humanRequested,
-        unresolvedNeed: intake.unresolved, automationResolvedRequest: intake.automationResolved } } };
+      outcomes: { emergencyGuidanceProvided: intake.emergencyGuidance ?? null, humanRequested: intake.humanRequested ?? null,
+        unresolvedNeed: intake.unresolved ?? null, automationResolvedRequest: intake.automationResolved ?? null } } };
   const reference = { callId: intake.callId, agentId: intake.agentId, event: intake.event, status: intake.status };
   const event = (suffix: string, type: ActivityEntry['type'], label: string, timestamp = intake.endedAt, detail?: string): ActivityEntry => ({
     id: `retell-${intake.callId}-${suffix}`, type, label, timestamp, detail, retell: reference,

@@ -1,6 +1,7 @@
 import type { AgentOutcome, EngineInput, LocationZone, NeedCategory, QuestionnaireAnswer, Rulebook } from '@/types';
 import { mapExtractionFields, type ExtractionMap } from '@/config/retell';
 import { RULEBOOKS } from '@/config/rulebooks';
+import { adaptDisasterFacts } from './disaster-facts';
 import { normalizePhone, redactPhones } from './contact';
 
 export class RetellInputError extends Error {}
@@ -9,7 +10,7 @@ export interface RetellIntake {
   event: RetellEvent; callId: string; agentId: string; status: string; callType: 'phone_call' | 'web_call';
   startedAt: string; endedAt: string; phone?: string; name: string; summary: string;
   questionnaire: QuestionnaireAnswer[]; input: EngineInput; analysisPending: boolean;
-  emergencyGuidance: boolean; humanRequested: boolean; unresolved: boolean; automationResolved: boolean;
+  emergencyGuidance: boolean | undefined; humanRequested: boolean | undefined; unresolved: boolean | undefined; automationResolved: boolean | undefined;
   linkedCaseId?: string; notes: string[];
 }
 const record = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -49,6 +50,7 @@ export function normalizeRetell(payload: unknown, rulebook: Rulebook, mapping: E
   // call_ended has no post-call analysis. Never trust stray custom values on that event.
   const rawFields = event === 'call_analyzed' && record(analysis.custom_analysis_data) ? analysis.custom_analysis_data : {};
   const fields = mapExtractionFields(rawFields, mapping);
+  const nativeDisaster = rulebook === 'disaster' && !!mapping.requested_service;
   let analysisPending = event !== 'call_analyzed' || !Object.keys(fields).length;
   const notes = analysisPending ? ['Structured analysis is unavailable; operator review required.'] : [];
   // The inspected agent has one string safety_context_signals field. Accept a documented JSON
@@ -58,18 +60,31 @@ export function normalizeRetell(payload: unknown, rulebook: Rulebook, mapping: E
     if (typeof fields.safety_context_signals !== 'string' || fields.safety_context_signals.length > 4000) return fail();
     const value = fields.safety_context_signals.trim();
     if (value.startsWith('{')) {
-      const safety = structured(value);
-      if (!record(safety)) return fail();
-      for (const key of ['need_category','location_zone','facility_signals','possible_danger','immediate_life_threat']) {
+      let safety: unknown;
+      try { safety = structured(value); } catch { if (!nativeDisaster) return fail(); }
+      if (!record(safety)) {
+        if (!nativeDisaster) return fail();
+        unstructuredSafety = string(value, '');
+        notes.push('Legacy safety/context JSON is invalid; retained for operator review.');
+      } else for (const key of ['need_category','location_zone','facility_signals','possible_danger','immediate_life_threat']) {
         if (fields[key] === undefined && Object.hasOwn(safety, key)) fields[key] = safety[key];
       }
     } else {
       unstructuredSafety = string(value, '');
-      analysisPending = true;
-      notes.push('Safety/context extraction is unstructured; operator review required. No keyword-based safety inference was applied.');
+      if (!nativeDisaster) {
+        analysisPending = true;
+        notes.push('Safety/context extraction is unstructured; operator review required. No keyword-based safety inference was applied.');
+      }
     }
   }
-  if (fields.need_category === undefined || fields.location_zone === undefined || fields.facility_signals === undefined) {
+  const facts = nativeDisaster ? adaptDisasterFacts(fields) : undefined;
+  if (facts) {
+    fields.need_category = facts.needCategory;
+    fields.location_zone = facts.locationZone;
+    notes.push(...facts.notes);
+    analysisPending ||= facts.notes.length > 0;
+  }
+  if (!facts && (fields.need_category === undefined || fields.location_zone === undefined || fields.facility_signals === undefined)) {
     analysisPending = true;
     notes.push('Classification/context fields are incomplete; operator review required.');
   }
@@ -81,8 +96,8 @@ export function normalizeRetell(payload: unknown, rulebook: Rulebook, mapping: E
   let signals: unknown = fields.facility_signals ?? [];
   if (typeof signals === 'string') signals = signals.trim().startsWith('[') ? structured(signals) : signals.split(',').map(s => s.trim()).filter(Boolean);
   if (!Array.isArray(signals) || signals.length > 40 || !signals.every(s => typeof s === 'string' && s.length <= 100)) return fail();
-  const facilitySignals = Array.from(new Set(signals as string[])).filter(s => Object.hasOwn(RULEBOOKS[rulebook].facilitySignals, s));
-  if (facilitySignals.length !== new Set(signals as string[]).size) notes.push('Unrecognized safety/context signal ignored; review extraction configuration.');
+  const facilitySignals = Array.from(new Set([...(signals as string[]), ...(facts?.signals ?? [])])).filter(s => Object.hasOwn(RULEBOOKS[rulebook].facilitySignals, s));
+  if ((signals as string[]).some(s => !Object.hasOwn(RULEBOOKS[rulebook].facilitySignals, s))) notes.push('Unrecognized safety/context signal ignored; review extraction configuration.');
   const rawAnswers = fields.questionnaire_answers ?? [];
   // Existing Retell field description requests free-text question:answer pairs, not JSON.
   // Preserve those verbatim under one labelled answer rather than guessing their boundaries.
@@ -95,17 +110,18 @@ export function normalizeRetell(payload: unknown, rulebook: Rulebook, mapping: E
     return { question: string(q.question, 'Question', 500), answer: string(q.answer, 'Not answered', 2000) };
   });
   // Mapped safety/outcome booleans must be present and typed; missing extraction is not 'false'.
-  for (const key of ['emergency_guidance_provided','unresolved_need','human_requested','automation_resolved_request']) {
+  if (!facts) for (const key of ['emergency_guidance_provided','unresolved_need','human_requested','automation_resolved_request']) {
     if (typeof fields[key] !== 'boolean') return fail();
   }
   if (unstructuredSafety) (answers as QuestionnaireAnswer[]).push({ question: 'Safety/context signals (unstructured)', answer: unstructuredSafety });
-  const emergencyGuidance = boolean(fields.emergency_guidance_provided) || boolean(fields.directed_to_911);
-  const humanRequested = boolean(fields.human_requested);
-  const unresolved = boolean(fields.unresolved_need);
-  const automationResolved = boolean(fields.automation_resolved_request);
+  if (facts) (answers as QuestionnaireAnswer[]).push(...facts.answers);
+  const emergencyGuidance = boolean(fields.directed_to_911) ? true : facts ? facts.emergencyGuidance : boolean(fields.emergency_guidance_provided);
+  const humanRequested = facts ? facts.humanRequested : boolean(fields.human_requested);
+  const unresolved = facts ? facts.unresolved : boolean(fields.unresolved_need);
+  const automationResolved = facts ? facts.automationResolved : boolean(fields.automation_resolved_request);
   const possibleDanger = boolean(fields.possible_danger);
   if (boolean(fields.immediate_life_threat) && !facilitySignals.includes('immediate_life_threat')) facilitySignals.push('immediate_life_threat');
-  const outcome: AgentOutcome = emergencyGuidance ? 'directed_to_911' : possibleDanger ? 'possible_danger' : unresolved ? 'could_not_resolve' : humanRequested ? 'caller_requested_human' : automationResolved ? 'resolved' : 'unknown';
+  const outcome: AgentOutcome = emergencyGuidance ? 'directed_to_911' : possibleDanger ? 'possible_danger' : unresolved ? 'could_not_resolve' : humanRequested ? 'caller_requested_human' : automationResolved && (!facts || unresolved === false && humanRequested === false) ? 'resolved' : 'unknown';
   let phone: string | undefined;
   if (call.call_type === 'phone_call') {
     if (!['inbound','outbound'].includes(call.direction as string)) return fail();
@@ -115,6 +131,7 @@ export function normalizeRetell(payload: unknown, rulebook: Rulebook, mapping: E
   const metadata = record(call.metadata) ? call.metadata : {};
   const linkedCaseId = metadata.zianecomms_case_id === undefined ? undefined : id(metadata.zianecomms_case_id);
   const reason = string(fields.reason_for_contact, 'Retell call — operator review required');
+  if (facts && notes.length) analysisPending = true;
   return {
     event: event as RetellEvent, callId, agentId, status: call.call_status as string, callType: call.call_type as RetellIntake['callType'],
     startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), phone,

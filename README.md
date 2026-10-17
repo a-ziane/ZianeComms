@@ -64,6 +64,8 @@ After applying the migration and seeding, manually verify: change priority → r
 
 ## Retell real-call integration (Task 5)
 
+After the proven real-call pipeline, configure native Disaster extraction using [docs/retell-disaster-extraction.md](docs/retell-disaster-extraction.md). It lists the exact Retell field types/descriptions and the Production mapping update; scoring rules remain unchanged.
+
 The server endpoint is `POST /api/webhooks/retell`. Full setup, the inspected extraction schema, exact field mapping, privacy/access controls and the two-call manual test are in [docs/retell-setup.md](docs/retell-setup.md). Retell is disabled by default until its environment, extraction formats and public HTTPS webhook URL are configured. The existing dashboard gains no new integration UI.
 
 When `OPERATIONS_PASSWORD` is set, open the dashboard with HTTP Basic username `operator` and that local password. Keep it configured after ingesting any real call data. This controlled-test gate replaces Task 4’s public synthetic-demo API assumption. The existing demo records are preserved alongside provider-origin cases.

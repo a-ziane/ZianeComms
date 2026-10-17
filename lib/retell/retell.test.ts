@@ -2,7 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 import { createHmac, createDecipheriv } from 'node:crypto';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { EXTRACTION_CONCEPTS, parseExtractionMap, type ExtractionMap } from '@/config/retell';
+import { EXTRACTION_CONCEPTS, LEGACY_EXTRACTION_CONCEPTS, parseExtractionMap, type ExtractionMap } from '@/config/retell';
 import { demoSeed } from '@/lib/persistence/demo';
 import { operationsRepository, type RpcClient } from '@/lib/persistence/repository';
 import { serializeState } from '@/lib/persistence/mapping';
@@ -17,7 +17,8 @@ import { retellConfig } from './config';
 
 // Entirely synthetic fixtures: field names deliberately differ from ZianeComms concepts.
 // These are not claims about the user's existing agent's unknown extraction schema.
-const mapping = Object.fromEntries(EXTRACTION_CONCEPTS.map(k => [k, `fixture_${k}`])) as ExtractionMap;
+// Freeze the original contract: new opt-in mappings are exercised in structured-extraction.test.ts.
+const mapping = Object.fromEntries(LEGACY_EXTRACTION_CONCEPTS.map(k => [k, `fixture_${k}`])) as ExtractionMap;
 const secret = 'test-only-api-key';
 const key = Buffer.alloc(32, 7);
 const start = Date.parse('2026-10-17T12:00:00Z');
@@ -139,6 +140,20 @@ describe('Retell HTTP → existing models → real PostgreSQL persistence',()=>{
     const attempts=await db.query<{channel:string}>('select channel from public.contact_attempts where case_id=$1',[c.id]);
     expect(attempts.rows).toEqual([{channel:'retell_voice'}]);
     expect((await db.query('select * from public.questionnaire_answers where case_id=$1',[c.id])).rows).toHaveLength(1);
+  });
+  it('persists native Disaster signals and unknown outcome facts through the signed handler and actual SQL',async()=>{
+    const nativeMapping=Object.fromEntries(EXTRACTION_CONCEPTS.map(k=>[k,`fixture_${k}`])) as ExtractionMap;
+    const p=payload('native_roundtrip',{requested_service:'shelter',affected_by_active_crisis:'yes',immediate_danger:'no',
+      facility_signals:undefined,emergency_guidance_provided:undefined,mobility_limitation:'unknown'});
+    const result=await handleRetell(signed(p),{...dependencies,config:()=>({...dependencies.config(),mapping:nativeMapping})});
+    expect(result.status).toBe(200);const c=(await calls())[0];
+    expect(c.score).toBe(53);expect(c.calculatedPriority).toBe(2);expect(c.status).toBe('awaiting_callback');
+    expect(c.engineInput?.facilitySignals).toEqual(['urgent_evacuation_shelter']);
+    expect(c.retell?.outcomes?.emergencyGuidanceProvided).toBeNull();expect(c.retell?.analysisPending).toBe(true);
+    expect(c.questionnaire.find(q=>q.question==='Structured intake — Mobility limitation')?.answer).toBe('unknown');
+    expect(c.aiSummary).toContain('operator review');
+    const stored=await db.query<{answer:string}>('select answer from public.questionnaire_answers where case_id=$1 and question=$2',[c.id,'Structured intake — Emergency-services guidance provided']);
+    expect(stored.rows[0].answer).toBe('unknown');
   });
   it('deduplicates retries, with no additional cases, history, attempts or revision changes',async()=>{
     await ingestRetell(adapter,normalize(),key); const before=await repo.load();
