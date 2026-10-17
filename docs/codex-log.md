@@ -42,3 +42,16 @@ Date: October 17, 2026 (America/Los_Angeles)
 - `package.json`, `package-lock.json`, the existing 29 tests, and IBM Bob's development log remain unchanged.
 
 No backend, integrations, ML, Dispatch Rules editor, Agent Setup, Knowledge Base, offline behavior or subsequent task was implemented.
+
+
+## Supabase client and session-refresh foundation
+
+Date: October 17, 2026 (America/Los_Angeles). Codex-assisted setup requested after Task 3.
+
+- Installed `@supabase/supabase-js` 2.118.0 and `@supabase/ssr` 0.12.7. Existing locked package versions were preserved. The existing Vitest / Node type optional peer conflict required `npm install --legacy-peer-deps`; no global npm configuration was changed.
+- Added local project environment settings in ignored `.env.local` and a placeholder-only `.env.example`.
+- Added browser/server client helpers and async session-refresh middleware under `utils/supabase/`, plus the Next.js 14 root middleware entry point. The middleware invokes `auth.getClaims()`, propagates refreshed request/response cookies and cache-protection headers, and preserves cookies/headers across repeated writes.
+- Preserved the dashboard and existing caller/responder logic. The supplied todos page was treated as an SDK usage example, not a dashboard replacement. No tables, persistence, login UI or database migrations were added; optional agent skills were not installed.
+- Added six focused regression tests for anonymous passthrough, auth refresh invocation, cookie/options forwarding, cache headers, repeated writes, server cookie stores and browser configuration.
+- Verification: 73/73 total tests pass; TypeScript and lint pass; isolated production build passes. An anonymous request through the production middleware returned HTTP 200 and the existing dashboard, queue and mock callers. Signed-in token refresh is covered with mocks; no live user login was available for an authenticated end-to-end check.
+- Repository changes include only the Supabase helpers, middleware, placeholder environment example, dependency files, tests and this log. The actual `.env.local` settings remain local and excluded from Git.
