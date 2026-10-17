@@ -113,3 +113,7 @@ Task 5 adds Retell post-call ingestion. Twilio, SMS recovery, authentication UI,
 ### Task 6 — SMS Recovery
 
 Provider-independent recovery SMS, signed Twilio inbound/status webhooks, durable duplicate protection, encrypted reply correlation and explicit structured-answer reprioritization are documented in [Twilio setup](docs/twilio-setup.md). Messaging defaults to disabled; configure consenting demo recipients and check the account's actual trial capabilities before a real SMS. No number purchase or account upgrade is automated. Free text remains operator review; use the documented structured protocol for deterministic Disaster fact updates.
+
+### Task 6.1 — Retell Chat recovery demo
+
+The existing recovery flow also supports a real Retell Chat conversation through a clearly labelled simulated-carrier view. Open an unresolved Retell case → **Open Recovery Chat**. Setup, agent publishing, truthful transport boundaries and the oxygen/power-loss acceptance scenario are in [Retell Chat recovery](docs/retell-chat-recovery.md). It reuses the existing server Retell credential; Chat defaults to disabled and does not send carrier SMS.

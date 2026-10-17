@@ -26,6 +26,7 @@ const ACTIVITY_ICONS: Record<ActivityType, string> = {
   conversation_completed: '📱',
   human_followup_requested: '↻',
   priority_calculated: '🔀',
+  recovery_chat: '💬',
   sms_received: '💬',
   sms_sent:                '💬',
   questionnaire_sent:      '📋',
@@ -49,6 +50,7 @@ const ACTIVITY_COLORS: Record<ActivityType, string> = {
   conversation_completed: 'border-blue-600 bg-blue-950/50',
   human_followup_requested: 'border-orange-600 bg-orange-950/50',
   priority_calculated: 'border-purple-600 bg-purple-950/50',
+  recovery_chat: 'border-blue-600 bg-blue-950/50',
   sms_received: 'border-blue-600 bg-blue-950/50',
   sms_sent:                'border-blue-600   bg-blue-950/50',
   questionnaire_sent:      'border-slate-600  bg-slate-800/40',
@@ -183,6 +185,12 @@ export default function CallerDetailModal({
             </div>
           </div>
 
+          {caller.source === 'retell' && !readOnly && (
+            <a href={`/recovery-chat/${encodeURIComponent(caller.id)}`} target="_blank" rel="noopener noreferrer"
+              className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 border border-cyan-800 rounded-lg px-3 py-2">
+              Open Recovery Chat
+            </a>
+          )}
           {/* Close button */}
           <button
             onClick={onClose}

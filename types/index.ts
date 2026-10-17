@@ -115,6 +115,7 @@ export interface QuestionnaireAnswer {
 // ── Activity log ──────────────────────────────────────────────────────────────
 
 export type ActivityType =
+  | 'recovery_chat'
   | 'sms_received'
   | 'sms_sent'
   | 'questionnaire_sent'

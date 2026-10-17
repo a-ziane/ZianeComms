@@ -5,7 +5,7 @@ import { createClient } from '@/utils/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
   // Retell authenticates with its provider signature, independently of the operator gate.
-  if (['/api/webhooks/retell', '/api/webhooks/twilio/sms', '/api/webhooks/twilio/status'].includes(request.nextUrl.pathname)) return NextResponse.next();
+  if (['/api/webhooks/retell', '/api/webhooks/retell-chat', '/api/webhooks/twilio/sms', '/api/webhooks/twilio/status'].includes(request.nextUrl.pathname)) return NextResponse.next();
   if (operatorGateRequired() && !operatorAccess(request.headers.get('authorization'))) return operatorDenied();
   return createClient(request);
 }

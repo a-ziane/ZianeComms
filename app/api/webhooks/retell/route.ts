@@ -1,3 +1,5 @@
+import { chatConfig } from '@/lib/retell-chat/config';
+import { RetellChatProvider } from '@/lib/retell-chat/provider';
 import { messagingConfig } from '@/lib/messaging/config';
 import { TwilioMessagingProvider } from '@/lib/messaging/twilio';
 import { recoverCall } from '@/lib/messaging/service';
@@ -9,6 +11,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   return handleRetell(request, { config: retellConfig, client: createOperationsClient, afterIngest: async callId => {
+    const chat = chatConfig();
+    if (chat) return recoverCall(createOperationsClient(),new RetellChatProvider(chat),chat,callId);
     const config = messagingConfig();
     if (config) await recoverCall(createOperationsClient(),new TwilioMessagingProvider(config),config,callId);
   } });
