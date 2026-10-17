@@ -4,7 +4,8 @@ import type { Caller, Responder, ResponderStatus, Rulebook } from '@/types';
 import { AREA_LABELS, LANGUAGE_LABELS, tagLabel } from '@/config/matching';
 import { STATUS_STYLES } from '@/components/ResponderPicker';
 
-export default function RespondersPage({ responders, callers, onStatusChange, rulebook }: {
+export default function RespondersPage({ responders, callers, onStatusChange, rulebook, readOnly = false }: {
+  readOnly?: boolean;
   responders: Responder[];
   callers: Caller[];
   onStatusChange: (id: string, status: ResponderStatus) => void;
@@ -33,7 +34,7 @@ export default function RespondersPage({ responders, callers, onStatusChange, ru
                 <div>Assigned active cases: {r.assignedCaseIds.map(id => callers.find(c => c.id === id)?.name ?? id).join(', ') || 'None'}</div>
               </div>
               <label className="text-xs text-slate-300 block mt-3">Status for {r.name}
-                <select value={r.status} onChange={e => onStatusChange(r.id, e.target.value as ResponderStatus)} className="ml-2 rounded border border-[#2a3650] px-2 py-1 bg-[#141e30] text-white">
+                <select disabled={readOnly} value={r.status} onChange={e => onStatusChange(r.id, e.target.value as ResponderStatus)} className="ml-2 rounded border border-[#2a3650] px-2 py-1 bg-[#141e30] text-white">
                   <option value="available">Available</option><option value="busy">Busy</option><option value="offline">Offline</option>
                 </select>
               </label>

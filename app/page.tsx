@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo, useCallback, useReducer } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type { Caller, NavPage, Priority, CallOutcome, DashboardMetrics, Rulebook, ActivityEntry, Responder, ResponderStatus, MatchingResult } from '@/types';
-import { DISASTER_CALLERS, CLINIC_CALLERS, MOCK_RESPONDERS } from '@/data/callers';
+import { usePersistentCases } from '@/hooks/usePersistentCases';
 import { sortCallers, applyHumanOverride } from '@/lib/engine';
-import { caseReducer, recordOutcome, recordCallbackAttempt, TERMINAL_STATUSES, recommendationSignature } from '@/lib/cases';
+import { recordOutcome, recordCallbackAttempt, TERMINAL_STATUSES, recommendationSignature } from '@/lib/cases';
 
 import LeftNav from '@/components/LeftNav';
 import DashboardSummary from '@/components/DashboardSummary';
@@ -20,14 +20,10 @@ import SettingsPage from '@/components/pages/SettingsPage';
 
 export default function App() {
   const [activePage, setActivePage] = useState<NavPage>('dashboard');
-  const [caseState, dispatchCases] = useReducer(caseReducer, {
-    rulebook: 'disaster',
-    responders: MOCK_RESPONDERS,
-    callersByMode: { disaster: [...DISASTER_CALLERS], clinic: [...CLINIC_CALLERS] },
-  });
+  const { state: caseState, dispatch: dispatchCases, status: databaseStatus, error: databaseError, reload, retry, cancelPending, hasPending, hasLoaded } = usePersistentCases();
   const { rulebook } = caseState;
   const callers = caseState.callersByMode[rulebook];
-  const responders = caseState.responders ?? MOCK_RESPONDERS;
+  const responders = useMemo(() => caseState.responders ?? [], [caseState.responders]);
   const [selectedCallerId, setSelectedCallerId] = useState<string | null>(null);
 
   // Each mode retains its own modified callers for the current session.
@@ -35,7 +31,7 @@ export default function App() {
     if (rb === rulebook) return;
     dispatchCases({ type: 'switch_mode', rulebook: rb });
     setSelectedCallerId(null);
-  }, [rulebook]);
+  }, [rulebook, dispatchCases]);
 
   // Active callers (not terminal)
   const activeCallers = useMemo(
@@ -73,7 +69,7 @@ export default function App() {
   // Patch a caller in state + append to activity log if provided
   const patchCaller = useCallback((id: string, patch: Partial<Caller>, logEntry?: ActivityEntry) => {
     dispatchCases({ type: 'patch', rulebook, id, patch, logEntry });
-  }, [rulebook]);
+  }, [rulebook, dispatchCases]);
 
   // CALL BACK action
   const handleStartCall = useCallback((callerId: string) => {
@@ -105,7 +101,7 @@ export default function App() {
     dispatchCases({ type: 'recommendation_shown', rulebook, id: callerId, operatorId: 'operator-mock-001',
       snapshot: { id: `recommendation-${crypto.randomUUID()}`, shownAt, result, callerPriority: priority,
         signature: recommendationSignature(result, priority) } });
-  }, [rulebook]);
+  }, [rulebook, dispatchCases]);
 
   // Only the existing Assign button invokes this approval action.
   const handleAssignResponder = useCallback((callerId: string, responderId: string, reason?: string) => {
@@ -114,11 +110,11 @@ export default function App() {
     dispatchCases({ type: 'assign', rulebook, id: callerId, responderId, humanApproved: true,
       snapshotId: caller.lastRecommendation.id, operatorId: 'operator-mock-001', timestamp: new Date().toISOString(),
       eventId: `assignment-${crypto.randomUUID()}`, reason });
-  }, [callers, rulebook]);
+  }, [callers, rulebook, dispatchCases]);
 
   const handleResponderStatus = useCallback((responderId: string, status: ResponderStatus) => {
     dispatchCases({ type: 'responder_status', responderId, status });
-  }, []);
+  }, [dispatchCases]);
 
   return (
     <div className="h-screen flex overflow-hidden bg-[#0f1929] text-white">
@@ -127,9 +123,15 @@ export default function App() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div role={databaseError ? 'alert' : 'status'} className={`relative z-[60] shrink-0 px-4 py-2 text-xs border-b border-[#2a3650] ${databaseError ? 'bg-red-950 text-red-200' : 'bg-[#131f33] text-slate-400'}`}>
+          {databaseStatus === 'loading' ? 'Loading saved data… Preview is read-only.' : databaseStatus === 'saving' ? 'Saving action to database…' : databaseError ? `Database error — ${hasLoaded ? 'last loaded data retained' : 'read-only demo preview; no live data loaded'}. Changes disabled. ${databaseError}` : 'Saved in Supabase'}
+          {databaseStatus !== 'saving' && databaseStatus !== 'loading' && <button className="ml-3 underline font-bold" onClick={() => void (databaseError ? retry() : reload())}>{hasPending ? 'Retry unsaved action' : 'Reload database'}</button>}
+          {hasPending && databaseStatus === 'error' && <button className="ml-3 underline" onClick={() => { if (window.confirm('Cancel this unsaved action and reload the latest saved data?')) void cancelPending(); }}>Cancel unsaved action and reload</button>}
+        </div>
         {activePage === 'dashboard' ? (
           <DashboardLayout
             rulebook={rulebook}
+            readOnly={databaseStatus !== 'ready'}
             responders={responders}
             onRecommendationShown={handleRecommendationShown}
             activeCallers={activeCallers}
@@ -148,7 +150,7 @@ export default function App() {
         ) : activePage === 'knowledge_base' ? (
           <KnowledgeBasePage />
         ) : activePage === 'responders' ? (
-          <RespondersPage responders={responders.filter(r => r.rulebooks.includes(rulebook))} callers={Object.values(caseState.callersByMode).flat()} onStatusChange={handleResponderStatus} rulebook={rulebook} />
+          <RespondersPage readOnly={databaseStatus !== 'ready'} responders={responders.filter(r => r.rulebooks.includes(rulebook))} callers={Object.values(caseState.callersByMode).flat()} onStatusChange={handleResponderStatus} rulebook={rulebook} />
         ) : activePage === 'dispatch_rules' ? (
           <DispatchRulesPage />
         ) : (
@@ -163,6 +165,7 @@ export default function App() {
 
 interface DashboardLayoutProps {
   rulebook: Rulebook;
+  readOnly: boolean;
   responders: Responder[];
   onRecommendationShown: (callerId: string, result: MatchingResult, priority: Priority) => void;
   activeCallers: Caller[];
@@ -179,6 +182,7 @@ interface DashboardLayoutProps {
 
 function DashboardLayout({
   rulebook,
+  readOnly,
   responders,
   onRecommendationShown,
   activeCallers,
@@ -254,6 +258,7 @@ function DashboardLayout({
         <CallerDetailModal
           key={selectedCaller.id}
           caller={selectedCaller}
+          readOnly={readOnly}
           responders={responders}
           onRecommendationShown={onRecommendationShown}
           onClose={onCloseModal}

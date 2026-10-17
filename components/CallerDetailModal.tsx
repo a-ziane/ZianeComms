@@ -9,6 +9,7 @@ import { PRIORITY_STYLES } from './CallbackQueue';
 
 interface CallerDetailModalProps {
   caller: Caller;
+  readOnly?: boolean;
   responders?: Responder[];
   onRecommendationShown?: (callerId: string, result: MatchingResult, priority: Priority) => void;
   onClose: () => void;
@@ -77,6 +78,7 @@ const CLOSE_OUTCOMES: { value: CallOutcome; label: string; style: string }[] = [
 
 export default function CallerDetailModal({
   caller,
+  readOnly = false,
   responders = [],
   onRecommendationShown,
   onClose,
@@ -385,7 +387,7 @@ export default function CallerDetailModal({
         </div>
 
         {/* ── Action bar ───────────────────────────────────────────────────── */}
-        <div className="shrink-0 border-t border-[#2a3650] bg-[#0d1526] px-6 py-4">
+        <fieldset disabled={readOnly} className="shrink-0 min-w-0 border-t border-[#2a3650] bg-[#0d1526] px-6 py-4">
 
           {/* Sub-panels (shown above the buttons when active) */}
           {activeAction === 'responder' && (
@@ -523,7 +525,7 @@ export default function CallerDetailModal({
               </button>
             </div>
           )}
-        </div>
+        </fieldset>
 
       </div>
     </div>

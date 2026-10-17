@@ -323,6 +323,7 @@ export function sortCallers(callers: CallerType[]): CallerType[] {
 // ── Phone masking (display utility) ──────────────────────────────────────────
 
 export function maskPhone(phone: string): string {
+  if (/^\(\*\*\*\) \*\*\*-\d{4}$/.test(phone)) return phone;
   const digits = phone.replace(/\D/g, '');
   if (digits.length >= 7) {
     return `(***) ***-${digits.slice(-4)}`;
