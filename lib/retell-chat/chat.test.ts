@@ -139,4 +139,32 @@ describe('Demo UI, turn idempotency and existing safety boundaries',()=>{
  expect(await recoverCall(adapter,provider(),config,'voice_chat_fixture')).toBe('ineligible');expect(create).not.toHaveBeenCalled();
  });
 
+ it('production failure reproduction: accepted mock claim is explained without any Retell API call',async()=>{
+ const id='task6_synthetic_1792263310949';await setup(id);
+ await db.query("insert into zianecomms_private.sms_recovery(call_id,case_id,provider,phone_identity,body,state,provider_message_id) values($1,$2,'task6-mock','fixture-identity','Mock verification invitation','accepted','synthetic_out_fixture')",[id,'retell-'+id]);
+ const result=await demoSession(adapter,config,'retell-'+id,{action:'start'},api);
+ expect(result).toMatchObject({code:'integration_test',canStart:false,status:'unavailable'});
+ expect(create).not.toHaveBeenCalled();expect(retrieve).not.toHaveBeenCalled();expect(completion).not.toHaveBeenCalled();
+ expect((await sql("select provider,state from zianecomms_private.sms_recovery"))[0]).toEqual({provider:'task6-mock',state:'accepted'});
+ });
+ it('a real case with an accepted different-provider claim is not blindly retried',async()=>{
+ const c=await setup();await db.query("insert into zianecomms_private.sms_recovery(call_id,case_id,provider,phone_identity,body,state,provider_message_id) values($1,$2,'twilio','fixture-identity','Already attempted','accepted','fixture_sms')",[c.retell!.callId,c.id]);
+ expect(await demoSession(adapter,config,c.id,{action:'start'},api)).toMatchObject({code:'other_transport',canStart:false});expect(create).not.toHaveBeenCalled();
+ });
+ it('complete conversation remains readable after signed analysis without offering another recovery',async()=>{
+ const c=await start();await ingestChat(adapter,normalizeChat(chat(),'chat_analyzed'));
+ const result=await demoSession(adapter,config,c.id,undefined,api);
+ expect(result).toMatchObject({chatId:'chat_fixture',canStart:false,canInspect:true,analyzed:true});expect(create).toHaveBeenCalledOnce();
+ });
+ it('projected pending-turn state prevents blind retry while preserving inspection',async()=>{
+ const c=await start();await adapter.rpc('zianecomms_chat_turn_claim',{p_case_id:c.id,p_chat_id:'chat_fixture',p_request_id:randomUUID()});
+ const result=await demoSession(adapter,config,c.id,undefined,api);expect(result).toMatchObject({canOpen:true,canSend:false,code:'pending_turn'});
+ });
+
+ it('database claim guard also rejects explicit integration provenance',async()=>{
+ const c=await setup();await db.query("update public.cases set data=data||jsonb_build_object('provenance','integration_test') where id=$1",[c.id]);
+ expect((await adapter.rpc('zianecomms_sms_claim',{p_call_id:c.retell!.callId,p_provider:'retell-chat',p_body:'Must not send'})).data).toBe(false);
+ expect((await sql('select * from zianecomms_private.sms_recovery'))).toHaveLength(0);expect(create).not.toHaveBeenCalled();
+ });
+
 });

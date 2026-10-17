@@ -8,17 +8,14 @@ import { TERMINAL_STATUSES } from '@/lib/cases';
 import { decryptContact, normalizePhone, protectContact, redactPhones } from '@/lib/retell/contact';
 import type { InboundMessage, MessagingProvider, RecoveryConfig } from './provider';
 import { isStop, updateFromReply } from './reply';
+import {needsRecovery,caseProvenance} from '@/lib/cases/recovery';
 async function rpc<T>(client: RpcClient, name: string, args: Record<string,unknown>): Promise<T> {
   const result = await client.rpc(name,args);
   if (result.error) throw Object.assign(new Error('SMS persistence unavailable'), {code:result.error.code});
   return result.data as T;
 }
 export function recoveryEligible(caller: Caller): boolean {
-  const r = caller.retell, o = r?.outcomes;
-  if (TERMINAL_STATUSES.includes(caller.status) || !r || r.disconnectionReason === 'user_requested_dnc') return false;
-  if (o?.automationResolvedRequest === true && o.humanRequested !== true && o.unresolvedNeed !== true) return false;
-  return o?.unresolvedNeed === true || o?.humanRequested === true ||
-    r.disconnectionReason === 'user_hangup' && r.callSuccessful === false;
+  return caseProvenance(caller)!=='integration_test' && !!caller.retell && needsRecovery(caller);
 }
 // DB claim is durable BEFORE the sole provider attempt. No automatic resend on timeout/crash.
 export async function recoverCall(client: RpcClient, provider: MessagingProvider, config: RecoveryConfig, callId: string) {

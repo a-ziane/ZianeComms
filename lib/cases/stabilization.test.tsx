@@ -139,7 +139,11 @@ describe('Mock data and score explanations', () => {
   });
 
   it('explains the lower bound when negative contributions produce a zero final score', () => {
-    const html = modal(DISASTER_CALLERS[5]);
+    // Keep a genuinely resolved negative-score fixture independent of David's corrected unmet need.
+    const input = { ...DISASTER_CALLERS[5].engineInput!, agentOutcome: 'resolved' as const };
+    const result = scoreCallerInput(input);
+    const html = modal({ ...DISASTER_CALLERS[5], status: 'resolved', engineInput: input,
+      score: result.score, scoreBreakdown: result.breakdown, priority: result.priority, calculatedPriority: result.priority });
     expect(html).toContain('Raw score: <span class="text-white">-10</span>');
     expect(html).toContain('Final score: <span class="text-white">0</span> (floored at 0)');
   });

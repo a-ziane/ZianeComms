@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Caller, Priority, CallOutcome, ActivityType, Responder, MatchingResult } from '@/types';
 import { maskPhone } from '@/lib/scoring';
 import { requiresSafetyConfirmation } from '@/lib/engine';
+import {caseProvenance,recoveryChatAccess} from '@/lib/cases/recovery';
 import ResponderPicker from './ResponderPicker';
 import { PRIORITY_STYLES } from './CallbackQueue';
 
@@ -26,6 +27,7 @@ const ACTIVITY_ICONS: Record<ActivityType, string> = {
   conversation_completed: '📱',
   human_followup_requested: '↻',
   priority_calculated: '🔀',
+  data_corrected: '📝',
   recovery_chat: '💬',
   sms_received: '💬',
   sms_sent:                '💬',
@@ -50,6 +52,7 @@ const ACTIVITY_COLORS: Record<ActivityType, string> = {
   conversation_completed: 'border-blue-600 bg-blue-950/50',
   human_followup_requested: 'border-orange-600 bg-orange-950/50',
   priority_calculated: 'border-purple-600 bg-purple-950/50',
+  data_corrected: 'border-amber-600 bg-amber-950/50',
   recovery_chat: 'border-blue-600 bg-blue-950/50',
   sms_received: 'border-blue-600 bg-blue-950/50',
   sms_sent:                'border-blue-600   bg-blue-950/50',
@@ -163,6 +166,7 @@ export default function CallerDetailModal({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-black text-white leading-tight">{caller.name}</h1>
+              {caseProvenance(caller)!=='live'&&<span title={recoveryChatAccess(caller).reason} className="text-xs font-bold text-amber-200">{caseProvenance(caller)==='integration_test'?'INTEGRATION TEST — MOCKED TRANSPORT':'SEEDED DEMO'}</span>}
               {caller.hardEscalation && (
                 <span className="text-xs bg-red-900 text-red-200 border border-red-500 px-2 py-1 rounded-lg font-bold tracking-wide animate-pulse">
                   ⚠ HARD ESCALATION
@@ -185,7 +189,7 @@ export default function CallerDetailModal({
             </div>
           </div>
 
-          {caller.source === 'retell' && !readOnly && (
+          {recoveryChatAccess(caller).canOpen && !readOnly && (
             <a href={`/recovery-chat/${encodeURIComponent(caller.id)}`} target="_blank" rel="noopener noreferrer"
               className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 border border-cyan-800 rounded-lg px-3 py-2">
               Open Recovery Chat

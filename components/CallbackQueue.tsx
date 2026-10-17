@@ -1,6 +1,7 @@
 'use client';
 
 import type { Caller, Priority } from '@/types';
+import {caseProvenance} from '@/lib/cases/recovery';
 import { maskPhone } from '@/lib/scoring';
 
 interface CallbackQueueProps {
@@ -87,6 +88,7 @@ export default function CallbackQueue({ callers, selectedCallerId, onCallerClick
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-semibold text-white truncate">{caller.name}</span>
+                  {caseProvenance(caller)!=='live'&&<span className="text-xs text-amber-200">{caseProvenance(caller)==='integration_test'?'INTEGRATION TEST':'SEEDED DEMO'}</span>}
                   {caller.manualPriority && (
                     <span className="text-xs bg-purple-800 text-purple-200 border border-purple-600 px-1.5 py-0.5 rounded font-semibold leading-none">
                       OVERRIDE

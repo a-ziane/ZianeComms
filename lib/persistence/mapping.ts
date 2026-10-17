@@ -5,7 +5,7 @@ import { maskPhone } from '@/lib/engine';
 export const DEMO_FACILITY_ID = 'zianecomms-demo';
 export interface CaseRow {
   id: string; facility_id: string; rulebook: Caller['rulebook']; phone_display: string;
-  raw_score: number; data: Omit<Caller, 'phone'>;
+  raw_score: number; data: Omit<Caller, 'phone'|'recoveryState'>; recovery_state?:Caller['recoveryState'];
 }
 export interface ResponderRow {
   id: string; facility_id: string; data: Omit<Responder, 'activeCallers' | 'assignedCaseIds'>;
@@ -17,14 +17,14 @@ export interface DatabaseSnapshot {
   responders: ResponderRow[];
 }
 export function serializeCase(caller: Caller): CaseRow {
-  const { phone, ...data } = caller;
+  const { phone, recoveryState: _recoveryState, ...data } = caller;
   return { id: caller.id, facility_id: DEMO_FACILITY_ID, rulebook: caller.rulebook,
     phone_display: /^\(\*\*\*\) \*\*\*-\d{4}$/.test(phone) ? phone : maskPhone(phone),
     raw_score: caller.scoreBreakdown.reduce((sum, b) => sum + b.points, 0), data };
 }
 export function deserializeCase(row: CaseRow): Caller {
   if (row.facility_id !== DEMO_FACILITY_ID || row.data.id !== row.id || row.data.rulebook !== row.rulebook) throw new Error('Case facility/mode mismatch');
-  return { ...row.data, phone: row.phone_display };
+  return { ...row.data, phone: row.phone_display, ...(row.recovery_state?{recoveryState:row.recovery_state}:{}) };
 }
 export function serializeResponder(responder: Responder): ResponderRow {
   const { activeCallers: _count, assignedCaseIds: _ids, ...data } = responder;

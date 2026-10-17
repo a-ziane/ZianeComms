@@ -115,6 +115,7 @@ export interface QuestionnaireAnswer {
 // ── Activity log ──────────────────────────────────────────────────────────────
 
 export type ActivityType =
+  | 'data_corrected'
   | 'recovery_chat'
   | 'sms_received'
   | 'sms_sent'
@@ -247,6 +248,9 @@ export interface CustomerFitReason {
 export interface Caller {
   id: string;
   source?: 'retell';
+  provenance?: 'integration_test'|'seed_demo'|'live';
+  // Read-only projection of the durable recovery claim; not accepted as writable case data.
+  recoveryState?: {callId:string;provider:string;state:string;hasSession:boolean;ended:boolean;analyzed:boolean;pendingTurn:boolean};
   retell?: { callId: string; agentId: string; event: string; status: string; startedAt: string; endedAt: string; analysisPending: boolean; disconnectionReason?: string; callSuccessful?: boolean;
     outcomes?: { emergencyGuidanceProvided: boolean | null; humanRequested: boolean | null; unresolvedNeed: boolean | null; automationResolvedRequest: boolean | null } };
   name: string;

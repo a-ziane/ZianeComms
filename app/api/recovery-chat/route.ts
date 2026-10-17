@@ -1,3 +1,4 @@
+import Retell from 'retell-sdk';
 import {createOperationsClient} from '@/lib/persistence/admin';
 import {operatorAccess,operatorDenied} from '@/lib/security/operator-access';
 import {sameRequestOrigin} from '@/lib/persistence/request-origin';
@@ -22,7 +23,13 @@ async function handle(request:Request,write:boolean){
     (typeof input.content!=='string'||!input.content.trim()||input.content.length>4000||typeof input.requestId!=='string'||!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(input.requestId))))throw Error();
  }catch{return response(400,{error:'Invalid recovery operation'});}
  try{return response(200,await demoSession(createOperationsClient(),config,input.caseId,write?input:undefined));}
- catch{return response(409,{error:'Recovery could not complete. Reload to inspect the existing session before retrying. Check agent publishing, active case, and any pending turn in Retell.'});}
+ catch(error){
+  const status=error instanceof Retell.APIError?error.status:undefined;
+  console.error('Recovery Chat operation blocked',{category:status?'retell_api_error':'state_or_persistence',...(status?{status}:{})});
+  return response(status?502:409,{code:status?'retell_api_error':'state_or_persistence',error:status?
+   `Retell Chat API returned HTTP ${status}. Inspect the existing session before retrying; no request was automatically resent.`:
+   'Recovery state changed or is unavailable. Refresh to inspect eligibility and the existing recovery claim before retrying.'});
+ }
 }
 export async function GET(request:Request){return handle(request,false);}
 export async function POST(request:Request){return handle(request,true);}
