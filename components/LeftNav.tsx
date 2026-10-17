@@ -54,7 +54,7 @@ export default function LeftNav({ activePage, onNavigate }: LeftNavProps) {
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-xs text-emerald-400 font-semibold">SYSTEM OPERATIONAL</span>
         </div>
-        <div className="text-xs text-slate-600 mt-1">v1.0 — Mock Data</div>
+        <div className="text-xs text-slate-600 mt-1">v1.0 — Case Operations</div>
       </div>
     </nav>
   );

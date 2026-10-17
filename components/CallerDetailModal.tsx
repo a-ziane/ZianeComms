@@ -22,6 +22,10 @@ interface CallerDetailModalProps {
 // ── Activity helpers ───────────────────────────────────────────────────────────
 
 const ACTIVITY_ICONS: Record<ActivityType, string> = {
+  call_received: '📞',
+  conversation_completed: '📱',
+  human_followup_requested: '↻',
+  priority_calculated: '🔀',
   sms_sent:                '💬',
   questionnaire_sent:      '📋',
   questionnaire_completed: '✅',
@@ -40,6 +44,10 @@ const ACTIVITY_ICONS: Record<ActivityType, string> = {
 };
 
 const ACTIVITY_COLORS: Record<ActivityType, string> = {
+  call_received: 'border-blue-600 bg-blue-950/50',
+  conversation_completed: 'border-blue-600 bg-blue-950/50',
+  human_followup_requested: 'border-orange-600 bg-orange-950/50',
+  priority_calculated: 'border-purple-600 bg-purple-950/50',
   sms_sent:                'border-blue-600   bg-blue-950/50',
   questionnaire_sent:      'border-slate-600  bg-slate-800/40',
   questionnaire_completed: 'border-emerald-600 bg-emerald-950/50',

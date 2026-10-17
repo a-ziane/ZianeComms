@@ -10,12 +10,12 @@ export class PersistenceError extends Error {
 }
 export function operationsRepository(client: RpcClient) {
   return {
-    async load(): Promise<{ state: CaseState; revision: number }> {
+    async load(): Promise<{ state: CaseState; revision: number; accessRequired?: boolean }> {
       const { data, error } = await client.rpc('zianecomms_load_demo');
       if (error) throw new PersistenceError(error.message);
       if (!data) throw new PersistenceError('Database demo is not seeded. Apply migrations and run npm run db:seed.');
       const snapshot = data as DatabaseSnapshot;
-      return { state: deserializeSnapshot(snapshot), revision: snapshot.revision };
+      return { state: deserializeSnapshot(snapshot), revision: snapshot.revision, accessRequired: snapshot.facility.configuration.realCallsEnabled === true };
     },
     async wasApplied(mutationId: string) {
       const { data, error } = await client.rpc('zianecomms_mutation_applied', { p_mutation_id: mutationId });

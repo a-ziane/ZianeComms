@@ -38,7 +38,7 @@ npm run db:seed
 npm run dev
 ```
 
-No database reset is necessary. **Never run `db reset` against a remote project.** If CLI access is unavailable, run the exact contents of `supabase/migrations/20261017000100_operations_persistence.sql` in the project's SQL Editor, then explicitly run `supabase/seed.sql`. This project's initial Task 4 migration was applied using the SQL Editor. Before later switching this project to CLI-managed migrations, link it and run `npx supabase migration repair --status applied 20261017000100` to record that already-applied migration; do not rerun its CREATE TABLE statements. New projects can use `db push` normally.
+No database reset is necessary. **Never run `db reset` against a remote project.** If CLI access is unavailable, run the exact contents of `supabase/migrations/20261017000100_operations_persistence.sql` in the project's SQL Editor, then explicitly run `supabase/seed.sql`. This project's initial Task 4 migration was applied using the SQL Editor. Its already-applied version was registered in migration history during Task 5, together with the matching Task 5 version. Do not rerun its CREATE TABLE statements. New projects can use `db push` to apply both checked-in migrations normally.
 
 `npm run db:seed` uses the server-only key and existing TypeScript mock data. It returns without changing data if demo cases already exist. Seeding never runs during normal application startup. To regenerate the reproducible SQL seed from the current models and engines:
 
@@ -62,6 +62,12 @@ The persistence suite applies the real SQL migration and seed in embedded Postgr
 
 After applying the migration and seeding, manually verify: change priority → refresh; assign/reassign → refresh; change responder status → refresh; No Answer / Needs Follow-Up → refresh; resolve → refresh; modify Clinic and Disaster independently and return to each. Each confirmed action must survive reload. The status bar indicates whether a save is complete.
 
+## Retell real-call integration (Task 5)
+
+The server endpoint is `POST /api/webhooks/retell`. Full setup, the inspected extraction schema, exact field mapping, privacy/access controls and the two-call manual test are in [docs/retell-setup.md](docs/retell-setup.md). Retell is disabled by default until its environment, extraction formats and public HTTPS webhook URL are configured. The existing dashboard gains no new integration UI.
+
+When `OPERATIONS_PASSWORD` is set, open the dashboard with HTTP Basic username `operator` and that local password. Keep it configured after ingesting any real call data. This controlled-test gate replaces Task 4’s public synthetic-demo API assumption. The existing demo records are preserved alongside provider-origin cases.
+
 ## Persistence architecture
 
 - `lib/persistence/mapping.ts` maps the existing Caller/Responder types to database rows and back. Both engines remain pure application logic. Workload is derived from active case assignments, never incremented/decremented as an unrelated counter.
@@ -82,6 +88,8 @@ Additional tables: `activity_events`, `priority_events`, `contact_attempts`, `qu
 
 ## Demo security and limits
 
+**Task 5 update:** the synthetic-only public API description below applies only before Retell ingestion and without an operator password. The Retell integration requires operator protection, encrypts callback numbers and persists a flag that prevents API data from reopening publicly if environment flags are removed. See the [integration security decisions](docs/retell-setup.md#merge-security-and-persistence-decisions).
+
 RLS is **enabled** on every operational table. `anon` and `authenticated` have no direct table privileges and cannot invoke operational RPCs; private schema access is also denied. Server RPCs use SECURITY INVOKER, not SECURITY DEFINER. A server-only secret client performs the fixed-facility demo operations. No privileged key is imported by a browser module.
 
 To avoid adding authentication UI in this hackathon task, enabling `ZIANECOMMS_DEMO_MODE=true` deliberately makes the app's operational API a **shared, unauthenticated synthetic-data demo**. Anyone who can access the app can modify that fixed demo facility through validated commands. Cross-origin browser POSTs are rejected, but this is not authentication and does not stop direct HTTP clients. This is acceptable only for fake data and a controlled demo. The API cannot select another facility or expose arbitrary database queries. Set demo mode false to disable this public API.
@@ -98,4 +106,4 @@ There is no automatic realtime subscription or polling in Task 4. Use Reload dat
 
 IBM Bob's work: `docs/bob-log.md` (preserved). Later Codex-assisted work and verification: `docs/codex-log.md`.
 
-No Retell, Twilio, real phone/SMS integration, authentication UI, offline mode, simulator, or deployment profile is part of this task.
+Task 5 adds Retell post-call ingestion. Twilio, SMS recovery, authentication UI, offline mode, simulator and deployment profiles remain deferred.

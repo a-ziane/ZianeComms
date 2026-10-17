@@ -1,7 +1,12 @@
 import { type NextRequest } from 'next/server';
+import { operatorAccess, operatorDenied, operatorGateRequired } from '@/lib/security/operator-access';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
+  // Retell authenticates with its provider signature, independently of the operator gate.
+  if (request.nextUrl.pathname === '/api/webhooks/retell') return NextResponse.next();
+  if (operatorGateRequired() && !operatorAccess(request.headers.get('authorization'))) return operatorDenied();
   return createClient(request);
 }
 

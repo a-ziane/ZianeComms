@@ -129,7 +129,11 @@ export type ActivityType =
   | 'case_closed'
   | 'followup_required'
   | 'priority_recalculated'
-  | 'recommendation_shown';
+  | 'recommendation_shown'
+  | 'call_received'
+  | 'conversation_completed'
+  | 'human_followup_requested'
+  | 'priority_calculated';
 
 export interface ActivityEntry {
   id: string;
@@ -144,6 +148,8 @@ export interface ActivityEntry {
   calculatedPriority?: Priority;
   reason?: string;
   safetyDowngradeConfirmed?: boolean;
+  retell?: { callId: string; agentId: string; event: string; status: string };
+  questionnaireChange?: { previous: QuestionnaireAnswer[]; current: QuestionnaireAnswer[] };
   dispatch?: DispatchAudit;
 
 }
@@ -238,8 +244,11 @@ export interface CustomerFitReason {
 
 export interface Caller {
   id: string;
+  source?: 'retell';
+  retell?: { callId: string; agentId: string; event: string; status: string; startedAt: string; endedAt: string; analysisPending: boolean;
+    outcomes?: { emergencyGuidanceProvided: boolean; humanRequested: boolean; unresolvedNeed: boolean; automationResolvedRequest: boolean } };
   name: string;
-  phone: string;            // stored unmasked; display layer masks it
+  phone: string;            // persisted/browser values are masked; real contacts stay encrypted server-side
 
   // ── Effective priority (what the system and humans agree on) ──
   priority: Priority;       // effective priority (human override if set, else calculated)
