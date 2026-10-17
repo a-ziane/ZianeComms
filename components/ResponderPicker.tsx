@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Caller, MatchingResult, Priority, Responder, ResponderMatch } from '@/types';
+import { deploymentResponders } from '@/lib/cases/deployment';
 import { matchResponders } from '@/lib/matching';
 import { recommendationSignature } from '@/lib/cases';
 
@@ -22,9 +23,9 @@ export default function ResponderPicker({ caller, responders, onRecommendationSh
 }) {
   const [showAll, setShowAll] = useState(false);
   const [reason, setReason] = useState('');
-  const { needCategory, language, coverageArea, rulebook } = caller;
-  const result = useMemo(() => matchResponders({ needCategory, language, coverageArea, rulebook }, responders),
-    [needCategory, language, coverageArea, rulebook, responders]);
+  const { needCategory, language, coverageArea, rulebook, deploymentId } = caller;
+  const result = useMemo(() => matchResponders({ needCategory, language, coverageArea, rulebook }, deploymentResponders({ deploymentId }, responders)),
+    [needCategory, language, coverageArea, rulebook, deploymentId, responders]);
   const signature = recommendationSignature(result, caller.priority);
   const logged = useRef<string>();
   useEffect(() => {

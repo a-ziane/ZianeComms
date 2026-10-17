@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
+  // Public write-only caller intake and non-sensitive offline shells do not use operator authentication.
+  if (['/help', '/api/help', '/offline', '/offline-sw.js'].includes(request.nextUrl.pathname)) return NextResponse.next();
   // Retell authenticates with its provider signature, independently of the operator gate.
   if (['/api/webhooks/retell', '/api/webhooks/retell-chat', '/api/webhooks/twilio/sms', '/api/webhooks/twilio/status'].includes(request.nextUrl.pathname)) return NextResponse.next();
   if (operatorGateRequired() && !operatorAccess(request.headers.get('authorization'))) return operatorDenied();

@@ -1,4 +1,5 @@
 import type { ActivityEntry, Caller, CallOutcome, Rulebook, Responder, ResponderStatus, RecommendationSnapshot } from '@/types';
+import { deploymentResponders } from './deployment';
 import { matchResponders } from '@/lib/matching';
 
 // Preserve existing terminal handling for duplicate/unreachable cases.
@@ -39,6 +40,7 @@ export interface CaseState {
 }
 
 export type CaseAction =
+  | { type: 'note'; rulebook: Rulebook; id: string; note: string; eventId: string; timestamp: string }
   | { type: 'switch_mode'; rulebook: Rulebook }
   | { type: 'responder_status'; responderId: string; status: ResponderStatus }
   | { type: 'recommendation_shown'; rulebook: Rulebook; id: string; snapshot: RecommendationSnapshot; operatorId: string }
@@ -70,8 +72,11 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
   }
   const caller = state.callersByMode[action.rulebook].find(c => c.id === action.id);
   if (!caller) return state;
+  if (action.type === 'note') {
+    return caseReducer(state, { type: 'patch', rulebook: action.rulebook, id: action.id, patch: {}, logEntry: { id: action.eventId, type: 'operator_note', timestamp: action.timestamp, operatorId: 'operator-mock-001', label: 'Operator note', detail: action.note } });
+  }
   if (action.type === 'recommendation_shown') {
-    const result = matchResponders(caller, state.responders ?? []);
+    const result = matchResponders(caller, deploymentResponders(caller, state.responders ?? []));
     if (action.snapshot.signature !== recommendationSignature(result, caller.priority) ||
       recommendationSignature(action.snapshot.result, caller.priority) !== action.snapshot.signature) return state;
     return caseReducer(state, { type: 'patch', rulebook: action.rulebook, id: action.id,
@@ -90,9 +95,9 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
     const snapshot = caller.lastRecommendation;
     // Viewing a recommendation never assigns a case. Revalidate availability and the shown snapshot at approval time.
     if (!action.humanApproved || !action.operatorId.trim() || !responder || responder.status === 'offline' ||
-      !responder.rulebooks.includes(caller.rulebook) || TERMINAL_STATUSES.includes(caller.status) ||
+      !deploymentResponders(caller, [responder]).length || !responder.rulebooks.includes(caller.rulebook) || TERMINAL_STATUSES.includes(caller.status) ||
       caller.assignedResponderId === responder.id || !snapshot || snapshot.id !== action.snapshotId ||
-      snapshot.signature !== recommendationSignature(matchResponders(caller, responders), caller.priority)) return state;
+      snapshot.signature !== recommendationSignature(matchResponders(caller, deploymentResponders(caller, responders)), caller.priority)) return state;
     const previous = responders.find(r => r.id === caller.assignedResponderId);
     const recommended = snapshot.result.candidates.find(c => c.responderId === snapshot.result.recommendedResponderId);
     const followed = snapshot.result.recommendedResponderId ? responder.id === snapshot.result.recommendedResponderId : undefined;

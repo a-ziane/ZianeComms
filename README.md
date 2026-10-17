@@ -117,3 +117,11 @@ Provider-independent recovery SMS, signed Twilio inbound/status webhooks, durabl
 ### Task 6.1 — Retell Chat recovery demo
 
 The existing recovery flow also supports a real Retell Chat conversation through a clearly labelled simulated-carrier view. Open an unresolved Retell case → **Open Recovery Chat**. Setup, agent publishing, truthful transport boundaries and the oxygen/power-loss acceptance scenario are in [Retell Chat recovery](docs/retell-chat-recovery.md). It reuses the existing server Retell credential; Chat defaults to disabled and does not send carrier SMS.
+
+### Task 7 — Global + Offline Resilience
+
+Settings now selects Los Angeles or Algeria configuration without resetting cases. The public `/help` form supports optional local location systems, explicit structured safety answers, and IndexedDB store-and-forward. Load it online once to cache its interface; offline requests remain on the device until the server confirms receipt. The DEMO network control uses the same queue logic as real browser network loss.
+
+The dashboard caches synchronized active work and queues safe offline notes/callback outcomes. Assignments and priority overrides require connection. Revision conflicts stop synchronization for review. Browser-local data is a demo implementation without application-level encryption; use a trusted device and fictional information.
+
+Apply the additive `global_offline_help` migration before deploying Task 7; it reuses existing case persistence and server-only `CONTACT_ENCRYPTION_KEY` for optional contacts. The live migration was explicitly authorized and applied; one labelled synthetic Algeria request and duplicate replay were verified. Supabase recorded it as version `20261017210755` (`global_offline_help`); do not reapply the local file as a second migration. Application code has not been deployed. No new environment-variable names or package dependencies are required. See [Twist #2 setup, demo, privacy and limitations](docs/twist-2-global-offline.md).

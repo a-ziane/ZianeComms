@@ -38,6 +38,10 @@ export function applyOperationalCommand(state: CaseState, untrusted: unknown, ti
   if (!('rulebook' in command) || !['disaster','clinic'].includes(command.rulebook) || !('id' in command)) throw new Error('Invalid operation mode');
   const caller = state.callersByMode[command.rulebook].find(c => c.id === command.id);
   if (!caller) throw new Error('Case not found');
+  if (command.type === 'note') {
+    if (!text(command.note) || !command.note.trim() || command.note.length > 2000 || !text(command.eventId) || !command.eventId) throw new Error('Invalid note');
+    return caseReducer(state, { ...command, note: command.note.trim(), timestamp });
+  }
   if (command.type === 'repeat_contact') {
     if (!command.input || command.input.rulebook && command.input.rulebook !== caller.rulebook || !text(command.detail)) throw new Error('Invalid repeat contact');
     const updated = simulateRepeatContact(caller, command.input, command.detail);

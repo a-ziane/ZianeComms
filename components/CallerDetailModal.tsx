@@ -1,5 +1,6 @@
 'use client';
 
+import { deployment } from '@/config/deployments';
 import { useState, useEffect, useCallback } from 'react';
 import type { Caller, Priority, CallOutcome, ActivityType, Responder, MatchingResult } from '@/types';
 import { maskPhone } from '@/lib/scoring';
@@ -23,6 +24,7 @@ interface CallerDetailModalProps {
 // ── Activity helpers ───────────────────────────────────────────────────────────
 
 const ACTIVITY_ICONS: Record<ActivityType, string> = {
+  operator_note: '📝',
   call_received: '📞',
   conversation_completed: '📱',
   human_followup_requested: '↻',
@@ -48,6 +50,7 @@ const ACTIVITY_ICONS: Record<ActivityType, string> = {
 };
 
 const ACTIVITY_COLORS: Record<ActivityType, string> = {
+  operator_note: 'border-blue-600 bg-blue-950/50',
   call_received: 'border-blue-600 bg-blue-950/50',
   conversation_completed: 'border-blue-600 bg-blue-950/50',
   human_followup_requested: 'border-orange-600 bg-orange-950/50',
@@ -189,6 +192,7 @@ export default function CallerDetailModal({
             </div>
           </div>
 
+          {caller.deploymentId && <span className="text-xs text-slate-300">{deployment(caller.deploymentId).name} · Help form intake</span>}
           {recoveryChatAccess(caller).canOpen && !readOnly && (
             <a href={`/recovery-chat/${encodeURIComponent(caller.id)}`} target="_blank" rel="noopener noreferrer"
               className="text-xs font-semibold text-cyan-300 hover:text-cyan-100 border border-cyan-800 rounded-lg px-3 py-2">

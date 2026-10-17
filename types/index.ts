@@ -115,6 +115,7 @@ export interface QuestionnaireAnswer {
 // ── Activity log ──────────────────────────────────────────────────────────────
 
 export type ActivityType =
+  | 'operator_note'
   | 'data_corrected'
   | 'recovery_chat'
   | 'sms_received'
@@ -168,6 +169,7 @@ export type ExperienceTag = 'emergency_medical' | 'welfare_visits' | 'evacuation
   'shelter_operations' | 'mobility_assistance' | 'medication_coordination' | 'patient_intake' | 'billing_support';
 
 export interface Responder {
+  deploymentId?: import('@/config/deployments').DeploymentId;
   id: string;
   name: string;
   role: string;
@@ -247,7 +249,8 @@ export interface CustomerFitReason {
 
 export interface Caller {
   id: string;
-  source?: 'retell';
+  source?: 'retell' | 'offline_help_form';
+  deploymentId?: import('@/config/deployments').DeploymentId;
   provenance?: 'integration_test'|'seed_demo'|'live';
   // Read-only projection of the durable recovery claim; not accepted as writable case data.
   recoveryState?: {callId:string;provider:string;state:string;hasSession:boolean;ended:boolean;analyzed:boolean;pendingTurn:boolean};

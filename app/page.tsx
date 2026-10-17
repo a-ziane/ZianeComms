@@ -6,6 +6,10 @@ import { usePersistentCases } from '@/hooks/usePersistentCases';
 import { sortCallers, applyHumanOverride } from '@/lib/engine';
 import { recordOutcome, recordCallbackAttempt, TERMINAL_STATUSES, recommendationSignature } from '@/lib/cases';
 
+import OfflineWorkPanel from '@/components/OfflineWorkPanel';
+import { useDeployment } from '@/hooks/useDeployment';
+import { deviceStore, withDeviceLock } from '@/lib/offline/storage';
+import { OPERATOR_KEY, type OperatorCache } from '@/lib/offline/queue';
 import LeftNav from '@/components/LeftNav';
 import DashboardSummary from '@/components/DashboardSummary';
 import CallbackQueue from '@/components/CallbackQueue';
@@ -20,7 +24,8 @@ import SettingsPage from '@/components/pages/SettingsPage';
 
 export default function App() {
   const [activePage, setActivePage] = useState<NavPage>('dashboard');
-  const { state: caseState, dispatch: dispatchCases, status: databaseStatus, error: databaseError, reload, retry, cancelPending, hasPending, hasLoaded } = usePersistentCases();
+  const { state: caseState, dispatch: dispatchCases, status: databaseStatus, error: databaseError, reload, retry, cancelPending, hasPending, hasLoaded, pendingCount, lastSync, conflict, online } = usePersistentCases();
+  const { profile } = useDeployment();
   const { rulebook } = caseState;
   const callers = caseState.callersByMode[rulebook];
   const responders = useMemo(() => caseState.responders ?? [], [caseState.responders]);
@@ -124,10 +129,20 @@ export default function App() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div role={databaseError ? 'alert' : 'status'} className={`relative z-[60] shrink-0 px-4 py-2 text-xs border-b border-[#2a3650] ${databaseError ? 'bg-red-950 text-red-200' : 'bg-[#131f33] text-slate-400'}`}>
-          {databaseStatus === 'loading' ? 'Loading saved data… Preview is read-only.' : databaseStatus === 'saving' ? 'Saving action to database…' : databaseError ? `Database error — ${hasLoaded ? 'last loaded data retained' : 'read-only demo preview; no live data loaded'}. Changes disabled. ${databaseError}` : 'Saved in Supabase'}
+          {!online ? `OFFLINE · Last synchronized: ${lastSync ? new Date(lastSync).toLocaleString() : 'never'} · ${pendingCount} actions waiting to sync. Cached cases only.` : databaseStatus === 'offline' ? 'Connection restored — preparing synchronization…' : databaseStatus === 'loading' ? 'Loading saved data… Preview is read-only.' : databaseStatus === 'saving' ? 'Saving action to database…' : databaseError ? `Database error — ${hasLoaded ? 'last loaded data retained' : 'read-only demo preview; no live data loaded'}. Changes disabled. ${databaseError}` : 'Saved in Supabase'}
+          {!online && databaseError && <span className="ml-3 text-amber-200">{databaseError}</span>}
+          <span className="ml-3">{profile.flag} {profile.name} · {profile.languages.map(l => l.label + (l.ready ? '-ready' : '')).join(' / ')}</span>
+          <a href="/help" className="ml-3 underline">Caller help form</a>
           {databaseStatus !== 'saving' && databaseStatus !== 'loading' && <button className="ml-3 underline font-bold" onClick={() => void (databaseError ? retry() : reload())}>{hasPending ? 'Retry unsaved action' : 'Reload database'}</button>}
-          {hasPending && databaseStatus === 'error' && <button className="ml-3 underline" onClick={() => { if (window.confirm('Cancel this unsaved action and reload the latest saved data?')) void cancelPending(); }}>Cancel unsaved action and reload</button>}
+          {hasPending && databaseStatus === 'error' && <button className="ml-3 underline" onClick={() => { if (window.confirm('Review required: discard all queued local actions and reload current server data? Already accepted actions will remain in server history.')) void cancelPending(); }}>Discard queued actions and review current data</button>}
         </div>
+        {!online && hasLoaded && <OfflineWorkPanel callers={activeCallers} dispatch={dispatchCases} disabled={conflict} />}
+        {conflict && <div role="alert" className="px-4 py-2 text-xs bg-red-950 text-red-200">Conflict — queued actions stopped. Reconnect, reload and review current server data before re-entering any still-needed actions.</div>}
+        {!hasPending && hasLoaded && <button className="text-xs text-slate-500 underline self-end px-4" onClick={async () => {
+          if (window.confirm('Clear this device’s cached cases? Reload online before offline work can resume.')) {
+            await withDeviceLock('operator', async () => { const saved = await deviceStore.get<OperatorCache>(OPERATOR_KEY); if (!saved?.actions.length) await deviceStore.remove(OPERATOR_KEY); }); window.location.reload();
+          }
+        }}>Clear device case cache</button>}
         {activePage === 'dashboard' ? (
           <DashboardLayout
             rulebook={rulebook}
