@@ -109,3 +109,7 @@ There is no automatic realtime subscription or polling in Task 4. Use Reload dat
 IBM Bob's work: `docs/bob-log.md` (preserved). Later Codex-assisted work and verification: `docs/codex-log.md`.
 
 Task 5 adds Retell post-call ingestion. Twilio, SMS recovery, authentication UI, offline mode, simulator and deployment profiles remain deferred.
+
+### Task 6 — SMS Recovery
+
+Provider-independent recovery SMS, signed Twilio inbound/status webhooks, durable duplicate protection, encrypted reply correlation and explicit structured-answer reprioritization are documented in [Twilio setup](docs/twilio-setup.md). Messaging defaults to disabled; configure consenting demo recipients and check the account's actual trial capabilities before a real SMS. No number purchase or account upgrade is automated. Free text remains operator review; use the documented structured protocol for deterministic Disaster fact updates.

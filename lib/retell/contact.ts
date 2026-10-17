@@ -1,4 +1,4 @@
-import { createCipheriv, createHmac, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto';
 
 export function contactKey(value: string | undefined): Buffer {
   if (!value || !/^[a-fA-F0-9]{64}$/.test(value)) throw new Error('Contact encryption key is not configured');
@@ -21,4 +21,13 @@ export function normalizePhone(value: unknown): string | undefined {
 }
 export function redactPhones(text: string): string {
   return text.replace(/\+?\d[\d\s().-]{5,}\d/g, match => match.replace(/\D/g, '').length >= 7 ? '[phone redacted]' : match);
+}
+
+// Server-side only; case/message-bound AAD prevents ciphertext being moved to another record.
+export function decryptContact(value: string, key: Buffer, context: string): string {
+  const [version, iv, tag, body] = value.split(':');
+  if (version !== 'v1' || !iv || !tag || !body) throw new Error('Invalid encrypted contact');
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv,'base64'));
+  decipher.setAAD(Buffer.from(context)); decipher.setAuthTag(Buffer.from(tag,'base64'));
+  return Buffer.concat([decipher.update(Buffer.from(body,'base64')),decipher.final()]).toString('utf8');
 }

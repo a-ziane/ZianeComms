@@ -10,7 +10,7 @@ export function operatorAccess(authorization: string | null, password = process.
   } catch { return false; }
 }
 export function operatorGateRequired() {
-  return process.env.RETELL_ENABLED === 'true' || !!process.env.OPERATIONS_PASSWORD;
+  return process.env.TWILIO_ENABLED === 'true' || process.env.RETELL_ENABLED === 'true' || !!process.env.OPERATIONS_PASSWORD;
 }
 export function operatorDenied() {
   const configured = (process.env.OPERATIONS_PASSWORD?.length ?? 0) >= 24;

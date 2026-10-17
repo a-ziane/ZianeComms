@@ -115,6 +115,7 @@ export interface QuestionnaireAnswer {
 // ── Activity log ──────────────────────────────────────────────────────────────
 
 export type ActivityType =
+  | 'sms_received'
   | 'sms_sent'
   | 'questionnaire_sent'
   | 'questionnaire_completed'
@@ -245,7 +246,7 @@ export interface CustomerFitReason {
 export interface Caller {
   id: string;
   source?: 'retell';
-  retell?: { callId: string; agentId: string; event: string; status: string; startedAt: string; endedAt: string; analysisPending: boolean;
+  retell?: { callId: string; agentId: string; event: string; status: string; startedAt: string; endedAt: string; analysisPending: boolean; disconnectionReason?: string; callSuccessful?: boolean;
     outcomes?: { emergencyGuidanceProvided: boolean | null; humanRequested: boolean | null; unresolvedNeed: boolean | null; automationResolvedRequest: boolean | null } };
   name: string;
   phone: string;            // persisted/browser values are masked; real contacts stay encrypted server-side

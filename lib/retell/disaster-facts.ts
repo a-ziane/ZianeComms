@@ -7,7 +7,7 @@ export const DISASTER_FACT_FIELDS = [
   'person_unresponsive', 'person_trapped', 'power_disruption',
 ] as const;
 export const DISASTER_SERVICES = ['shelter','evacuation','transportation','welfare_check','outage_information','medical_assistance','other','unknown'] as const;
-const labels: Record<typeof DISASTER_FACT_FIELDS[number], string> = {
+export const DISASTER_FACT_LABELS: Record<typeof DISASTER_FACT_FIELDS[number], string> = {
   immediate_danger: 'Immediate threat to life', medical_need: 'Medical need', mobility_limitation: 'Mobility limitation',
   medical_equipment_dependency: 'Powered medical equipment dependency', affected_by_active_crisis: 'Affected by active crisis',
   unable_to_self_evacuate: 'Unable to self-evacuate', no_transportation_available: 'No transportation available',
@@ -31,7 +31,7 @@ export function adaptDisasterFacts(fields: Record<string, unknown>) {
     answers.push({ question: `Structured intake — ${label}`, answer: value });
     return value;
   }
-  const facts = Object.fromEntries(DISASTER_FACT_FIELDS.map(k => [k, fact(k, labels[k])])) as Record<typeof DISASTER_FACT_FIELDS[number], ExtractedFact>;
+  const facts = Object.fromEntries(DISASTER_FACT_FIELDS.map(k => [k, fact(k, DISASTER_FACT_LABELS[k])])) as Record<typeof DISASTER_FACT_FIELDS[number], ExtractedFact>;
   const outcome = {
     emergency: fact('emergency_guidance_provided','Emergency-services guidance provided'),
     human: fact('human_requested','Human follow-up requested'),

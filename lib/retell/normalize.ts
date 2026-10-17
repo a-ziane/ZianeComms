@@ -11,7 +11,7 @@ export interface RetellIntake {
   startedAt: string; endedAt: string; phone?: string; name: string; summary: string;
   questionnaire: QuestionnaireAnswer[]; input: EngineInput; analysisPending: boolean;
   emergencyGuidance: boolean | undefined; humanRequested: boolean | undefined; unresolved: boolean | undefined; automationResolved: boolean | undefined;
-  linkedCaseId?: string; notes: string[];
+  disconnectionReason?: string; callSuccessful?: boolean; linkedCaseId?: string; notes: string[];
 }
 const record = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
 const fail = (): never => { throw new RetellInputError('Invalid Retell payload'); };
@@ -136,7 +136,9 @@ export function normalizeRetell(payload: unknown, rulebook: Rulebook, mapping: E
     event: event as RetellEvent, callId, agentId, status: call.call_status as string, callType: call.call_type as RetellIntake['callType'],
     startedAt: new Date(start).toISOString(), endedAt: new Date(end).toISOString(), phone,
     name: string(fields.caller_name, 'Retell caller', 200), summary: string(analysis.call_summary, reason),
-    questionnaire: answers as QuestionnaireAnswer[], analysisPending, emergencyGuidance, humanRequested, unresolved, automationResolved, linkedCaseId, notes,
+    questionnaire: answers as QuestionnaireAnswer[], analysisPending,
+    disconnectionReason: typeof call.disconnection_reason === 'string' && /^[a-z_]{1,100}$/.test(call.disconnection_reason) ? call.disconnection_reason : undefined,
+    callSuccessful: typeof analysis.call_successful === 'boolean' ? analysis.call_successful : undefined, emergencyGuidance, humanRequested, unresolved, automationResolved, linkedCaseId, notes,
     input: { rulebook, needCategory, needDescription: reason, language: string(fields.preferred_language, 'Unknown', 80),
       locationZone, locationDetail: string(fields.location, 'Not collected', 500), waitMinutes: 0, attempts: 1,
       callerMessage: string(fields.caller_message, reason), facilitySignals, agentOutcome: outcome },

@@ -26,6 +26,7 @@ async function boundedBody(request: Request): Promise<string> {
 export async function handleRetell(request: Request, dependencies: {
   config: () => ReturnType<typeof retellConfig>;
   client: () => RpcClient;
+  afterIngest?: (callId: string) => Promise<unknown>;
 }) {
   let config;
   try { config = dependencies.config(); }
@@ -47,6 +48,7 @@ export async function handleRetell(request: Request, dependencies: {
   } catch { return response(400, { error: 'Invalid Retell payload' }); }
   try {
     const result = await ingestRetell(dependencies.client(), intake, config.encryptionKey);
+    await dependencies.afterIngest?.(intake.callId);
     return response(200, { received: true, duplicate: result.duplicate });
   } catch {
     // No caller content, phone, raw payload, signature, secret or database details in logs/responses.

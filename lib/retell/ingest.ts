@@ -39,7 +39,7 @@ export function buildRetellCase(state: CaseState, intake: RetellIntake, context:
     aiSummary: (intake.analysisPending ? 'Intake classification incomplete — operator review required. ' : '') + intake.summary, questionnaire: intake.questionnaire, status: 'awaiting_callback',
     activityLog: existing?.activityLog ?? [], lastRecommendation: undefined,
     retell: { callId: intake.callId, agentId: intake.agentId, status: intake.status, event: intake.event,
-      startedAt: intake.startedAt, endedAt: intake.endedAt, analysisPending: intake.analysisPending,
+      startedAt: intake.startedAt, endedAt: intake.endedAt, analysisPending: intake.analysisPending, disconnectionReason: intake.disconnectionReason, callSuccessful: intake.callSuccessful,
       outcomes: { emergencyGuidanceProvided: intake.emergencyGuidance ?? null, humanRequested: intake.humanRequested ?? null,
         unresolvedNeed: intake.unresolved ?? null, automationResolvedRequest: intake.automationResolved ?? null } } };
   const reference = { callId: intake.callId, agentId: intake.agentId, event: intake.event, status: intake.status };
