@@ -13,9 +13,15 @@ export const LINES:Record<LineId,LinePreset>={
  custom:{id:'custom',label:'CUSTOM',name:'Your organization',short:'My organization',description:'Every day. Every missed caller.',icon:'▦',questions:[],signals:[],examples:['Clinic · dental callback','Utility · service interruption','University · student support','Business · customer service'],knowledge:[]},
 };
 function signal(key:string,label:string,points:number,reason:string,hard=false):FacilitySignalRule{return {key,label,points,reason:`[DEMO] ${reason}`,category:'facility',...(hard?{hardEscalate:true,escalationReason:`Confirmed ${label.toLowerCase()} requires immediate human safety review.`}:{})};}
+const factorDomains=['Safety context','Medical access','Mobility','Communication','Shelter','Utilities','Transportation','Physical access','Household','Continuity'];
+const factorDimensions=['confirmed now','worsening','repeat contact','no safe alternative','time sensitive','language barrier','accessibility barrier','location uncertainty','dependent affected','resource unavailable'];
+export const DEMO_FACTOR_LIBRARY:Record<string,FacilitySignalRule>=Object.fromEntries(factorDomains.flatMap((domain,di)=>factorDimensions.map((dimension,xi)=>{
+ const key=`demo_${domain.toLowerCase().replaceAll(' ','_')}_${dimension.replaceAll(' ','_')}`;
+ return [key,signal(key,`${domain} · ${dimension}`,Math.min(12,2+((di+xi)%9)),`Explicit ${domain.toLowerCase()} fact with ${dimension} context contributes to the explainable demo score.`)];
+})));
 // Additive demo configurations. The live Disaster/Clinic registry and weights are untouched.
 export function lineRulebook(line:LineId,organization?:OrganizationConfig):RulebookConfig{
- if(line==='custom')return organization?.rulebook==='disaster'?DISASTER_RULEBOOK:CLINIC_RULEBOOK;
+ if(line==='custom'){const base=organization?.rulebook==='disaster'?DISASTER_RULEBOOK:CLINIC_RULEBOOK;return {...base,label:`${organization?.name??'Organization'} · editable demo rules`,facilitySignals:{...base.facilitySignals,...DEMO_FACTOR_LIBRARY}};}
  const extra:Record<string,FacilitySignalRule>=line==='911'?{
   person_unresponsive:signal('person_unresponsive','Person unresponsive',0,'Explicit unresponsive-person fact bypasses the score.',true),
   breathing_difficulty:signal('breathing_difficulty','Breathing difficulty',0,'Explicit breathing difficulty requires immediate safety review.',true),
@@ -27,7 +33,49 @@ export function lineRulebook(line:LineId,organization?:OrganizationConfig):Ruleb
   communications_loss:signal('communications_loss','Communications unavailable',25,'Confirmed communications loss can isolate personnel requesting support.'),
   logistics_disruption:signal('logistics_disruption','Logistics support interruption',20,'A confirmed support dependency is unavailable.'),
  };
- return {...DISASTER_RULEBOOK,label:`${LINES[line].label} · demo support rules`,description:'Configurable prototype decision support. Not official dispatch or clinical protocols.',facilitySignals:{...DISASTER_RULEBOOK.facilitySignals,...extra}};
+ return {...DISASTER_RULEBOOK,label:`${LINES[line].label} · demo support rules`,description:'Configurable prototype decision support. Not official dispatch or clinical protocols.',facilitySignals:{...DISASTER_RULEBOOK.facilitySignals,...extra,...DEMO_FACTOR_LIBRARY}};
 }
 export function lineQuestions(line:LineId,organization?:OrganizationConfig){return line==='custom'&&organization?(organization.questionnaires[`${organization.deploymentId}:${organization.rulebook}`]??[]).filter(q=>q.enabled).map(q=>q.text):LINES[line].questions;}
-export function lineKnowledge(line:LineId,organization?:OrganizationConfig){return line==='custom'&&organization?organization.knowledge.filter(k=>k.status==='approved').map(k=>({title:k.title,body:k.content})):LINES[line].knowledge;}
+const supplementalKnowledge:Record<LineId,{title:string;body:string}[]>={
+ '911':[
+  {title:'Call continuity',body:'Keep a callback method and the best available location together with the case. If contact drops, preserve confirmed facts and mark everything else unknown.'},
+  {title:'Fire and smoke context',body:'Capture visible smoke, blocked exits, trapped people and whether danger is approaching. Do not direct someone back into a hazardous area.'},
+  {title:'Accessibility',body:'Record mobility, communication and equipment needs in the caller’s own terms so a human can plan appropriate assistance.'},
+  {title:'Children and dependents',body:'Record the number of dependents and whether they are together. Do not infer custody, medical condition or location.'},
+  {title:'Language access',body:'Preserve the preferred language and whether interpretation is needed. Safety facts remain explicit structured fields.'},
+  {title:'Handoff checklist',body:'A useful handoff includes callback, best location, immediate danger, people affected, access barriers and what remains unknown.'},
+ ],
+ '311':[
+  {title:'Road and sidewalk hazards',body:'Record the affected route, direction, obstruction type, accessible-path impact and whether people can safely pass.'},
+  {title:'Traffic controls',body:'Capture the intersection or landmark and which signal or sign appears affected. Never promise a repair time.'},
+  {title:'Water and utility observations',body:'Describe what is visible, the area affected and whether property access is unsafe. Do not diagnose the cause.'},
+  {title:'Trees and debris',body:'Record whether a road, entrance, sidewalk, power line or transit path is blocked and whether the condition is changing.'},
+  {title:'Sanitation',body:'Capture location, material type when known and public access impact while avoiding unnecessary personal data.'},
+  {title:'Duplicate reports',body:'Link repeat reports to the same incident when evidence supports it. Preserve each contact and any new facts.'},
+ ],
+ '211':[
+  {title:'Household composition',body:'Ask how many adults, children and dependents need support only when it affects resource matching.'},
+  {title:'Accessibility needs',body:'Record mobility, sensory, language and equipment needs without inferring disability or diagnosis.'},
+  {title:'Safe contact',body:'Confirm when and how the person may be contacted. A missing phone number does not remove a request from the queue.'},
+  {title:'Documents and eligibility',body:'Explain that a provider may ask for documents, but never claim eligibility before a responsible organization verifies it.'},
+  {title:'Domestic safety and privacy',body:'Use the caller’s safe-contact preference and minimize sensitive details. Escalate explicit immediate danger through the safety rule.'},
+  {title:'Resource verification',body:'Addresses, hours, capacity and eligibility can change. A human should verify current availability before referral.'},
+ ],
+ defense:[
+  {title:'Continuity handoff',body:'Record responsible contact, affected function, known dependencies, available alternate communication and the next review time.'},
+  {title:'Accountability',body:'Preserve last confirmed contact and source. Unknown personnel status remains unknown until a responsible human confirms it.'},
+  {title:'Equipment dependency',body:'Capture the supported function and consequence of loss without collecting restricted technical details.'},
+  {title:'Transport support',body:'Record origin area, destination function, mobility constraints and timing need. This demo does not route vehicles.'},
+  {title:'Supply request',body:'Capture category, quantity when known, destination area and operational need. Human review confirms authority and availability.'},
+  {title:'Information boundaries',body:'Do not enter classified, targeting, weapons or operational intelligence. Use approved systems for restricted information.'},
+ ],
+ custom:[
+  {title:'Appointments',body:'Collect preferred callback time, service type and accessibility needs. A request is not a confirmed appointment.'},
+  {title:'Prescription requests',body:'Record medication name only when volunteered, the request type and callback details. Do not promise authorization or diagnose.'},
+  {title:'Billing support',body:'Capture the statement or claim question without storing full payment-card details in notes.'},
+  {title:'Language and access',body:'Preserve language, interpretation and accessibility preferences for the responding team.'},
+  {title:'Urgent symptoms',body:'Explicit danger or configured safety facts receive immediate human review under the organization rulebook.'},
+  {title:'Closed-loop follow-up',body:'Record the outcome, next owner and whether the person still needs help. Unresolved requests remain active.'},
+ ],
+};
+export function lineKnowledge(line:LineId,organization?:OrganizationConfig){const approved=line==='custom'&&organization?organization.knowledge.filter(k=>k.status==='approved').map(k=>({title:k.title,body:k.content})):LINES[line].knowledge;return [...approved,...supplementalKnowledge[line]];}
