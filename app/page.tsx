@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { Caller, NavPage, Priority, CallOutcome, DashboardMetrics, Rulebook, ActivityEntry, Responder, ResponderStatus, MatchingResult } from '@/types';
 import { usePersistentCases } from '@/hooks/usePersistentCases';
 import { sortCallers, applyHumanOverride } from '@/lib/engine';
 import { recordOutcome, recordCallbackAttempt, TERMINAL_STATUSES, recommendationSignature } from '@/lib/cases';
 
+import { OrganizationProvider, OrganizationBar, useOrganization } from '@/components/organization/OrganizationProvider';
+import { ResponderDraftPanel } from '@/components/organization/Editors';
+import { DEFAULT_ORGANIZATION, matchingForCaller, operationalRulebook } from '@/lib/organization/model';
+import { workspaceMetrics } from '@/lib/organization/metrics';
 import OfflineWorkPanel from '@/components/OfflineWorkPanel';
 import { useDeployment } from '@/hooks/useDeployment';
 import { deviceStore, withDeviceLock } from '@/lib/offline/storage';
@@ -15,28 +19,33 @@ import DashboardSummary from '@/components/DashboardSummary';
 import CallbackQueue from '@/components/CallbackQueue';
 import CallerDetailModal from '@/components/CallerDetailModal';
 
-// Placeholder pages
+// Organization configuration pages
 import AgentSetupPage from '@/components/pages/AgentSetupPage';
 import KnowledgeBasePage from '@/components/pages/KnowledgeBasePage';
 import RespondersPage from '@/components/pages/RespondersPage';
 import DispatchRulesPage from '@/components/pages/DispatchRulesPage';
 import SettingsPage from '@/components/pages/SettingsPage';
 
-export default function App() {
+export default function App() { return <OrganizationProvider><OperationsApp/></OrganizationProvider>; }
+
+function OperationsApp() {
+  const organization = useOrganization();
   const [activePage, setActivePage] = useState<NavPage>('dashboard');
   const { state: caseState, dispatch: dispatchCases, status: databaseStatus, error: databaseError, reload, retry, cancelPending, hasPending, hasLoaded, pendingCount, lastSync, conflict, online } = usePersistentCases();
   const { profile } = useDeployment();
-  const { rulebook } = caseState;
-  const callers = caseState.callersByMode[rulebook];
-  const responders = useMemo(() => caseState.responders ?? [], [caseState.responders]);
+  const rulebook = operationalRulebook(caseState.rulebook, organization.selectedId, caseState.activeOrganizations, organization.record?.active);
+  const callers = caseState.callersByMode[rulebook].filter(c => (c.organizationId ?? DEFAULT_ORGANIZATION) === organization.selectedId);
+  const responders = useMemo(() => (caseState.responders ?? []).filter(r => (r.organizationId ?? DEFAULT_ORGANIZATION) === organization.selectedId && (!organization.record?.active || organization.record.active.configuration.responders.some(x=>x.id===r.id))), [caseState.responders, organization.selectedId, organization.record?.active]);
   const [selectedCallerId, setSelectedCallerId] = useState<string | null>(null);
+
+  useEffect(() => { setSelectedCallerId(null); }, [organization.selectedId]);
 
   // Each mode retains its own modified callers for the current session.
   const handleRulebookChange = useCallback((rb: Rulebook) => {
-    if (rb === rulebook) return;
+    if (rb === rulebook || organization.selectedId !== DEFAULT_ORGANIZATION) return;
     dispatchCases({ type: 'switch_mode', rulebook: rb });
     setSelectedCallerId(null);
-  }, [rulebook, dispatchCases]);
+  }, [rulebook, dispatchCases, organization.selectedId]);
 
   // Active callers (not terminal)
   const activeCallers = useMemo(
@@ -56,20 +65,7 @@ export default function App() {
   );
 
   // Dashboard metrics
-  const metrics = useMemo((): DashboardMetrics => {
-    const total = callers.length;
-    const p0 = activeCallers.filter(c => c.priority === 0).length;
-    return {
-      incomingCalls: total + 4,  // mock: a few extra that were answered live
-      answeredCalls: 4,
-      missedCalls: total,
-      recoveredCallers: total,
-      activeResponders: responders.filter(r => r.rulebooks.includes(rulebook) && r.status === 'available').length,
-      awaitingCallback: activeCallers.filter(c => c.status === 'awaiting_callback').length,
-      priority0Count: p0,
-      resolvedCases: closedCallers.length,
-    };
-  }, [callers, activeCallers, closedCallers, responders, rulebook]);
+  const metrics = useMemo(() => workspaceMetrics(callers, responders, rulebook), [callers, responders, rulebook]);
 
   // Patch a caller in state + append to activity log if provided
   const patchCaller = useCallback((id: string, patch: Partial<Caller>, logEntry?: ActivityEntry) => {
@@ -128,6 +124,7 @@ export default function App() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="shrink-0 px-3 py-2"><OrganizationBar/></div>
         <div role={databaseError ? 'alert' : 'status'} className={`relative z-[60] shrink-0 px-4 py-2 text-xs border-b border-[#2a3650] ${databaseError ? 'bg-red-950 text-red-200' : 'bg-[#131f33] text-slate-400'}`}>
           {!online ? `OFFLINE · Last synchronized: ${lastSync ? new Date(lastSync).toLocaleString() : 'never'} · ${pendingCount} actions waiting to sync. Cached cases only.` : databaseStatus === 'offline' ? 'Connection restored — preparing synchronization…' : databaseStatus === 'loading' ? 'Loading saved data… Preview is read-only.' : databaseStatus === 'saving' ? 'Saving action to database…' : databaseError ? `Database error — ${hasLoaded ? 'last loaded data retained' : 'read-only demo preview; no live data loaded'}. Changes disabled. ${databaseError}` : 'Saved in Supabase'}
           {!online && databaseError && <span className="ml-3 text-amber-200">{databaseError}</span>}
@@ -146,6 +143,8 @@ export default function App() {
         {activePage === 'dashboard' ? (
           <DashboardLayout
             rulebook={rulebook}
+            modeLocked={organization.selectedId !== DEFAULT_ORGANIZATION}
+            matchingConfig={matchingForCaller(selectedCaller ?? {}, caseState.activeOrganizations)}
             readOnly={databaseStatus !== 'ready'}
             responders={responders}
             onRecommendationShown={handleRecommendationShown}
@@ -165,7 +164,7 @@ export default function App() {
         ) : activePage === 'knowledge_base' ? (
           <KnowledgeBasePage />
         ) : activePage === 'responders' ? (
-          <RespondersPage readOnly={databaseStatus !== 'ready'} responders={responders.filter(r => r.rulebooks.includes(rulebook))} callers={Object.values(caseState.callersByMode).flat()} onStatusChange={handleResponderStatus} rulebook={rulebook} />
+          <RespondersPage configurationPanel={<ResponderDraftPanel/>} readOnly={databaseStatus !== 'ready'} responders={responders.filter(r => r.rulebooks.includes(rulebook))} callers={Object.values(caseState.callersByMode).flat()} onStatusChange={handleResponderStatus} rulebook={rulebook} />
         ) : activePage === 'dispatch_rules' ? (
           <DispatchRulesPage />
         ) : (
@@ -179,6 +178,8 @@ export default function App() {
 // ── Dashboard Layout ───────────────────────────────────────────────────────────
 
 interface DashboardLayoutProps {
+  modeLocked?: boolean;
+  matchingConfig?: import('@/config/matching').MatchingConfig;
   rulebook: Rulebook;
   readOnly: boolean;
   responders: Responder[];
@@ -197,6 +198,8 @@ interface DashboardLayoutProps {
 
 function DashboardLayout({
   rulebook,
+  modeLocked,
+  matchingConfig,
   readOnly,
   responders,
   onRecommendationShown,
@@ -214,7 +217,7 @@ function DashboardLayout({
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Top bar */}
-      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-[#2a3650] bg-[#131f33]">
+      <div className="shrink-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 py-3 border-b border-[#2a3650] bg-[#131f33]">
         <div>
           <h1 className="text-sm font-bold text-white">Operations Dashboard</h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -231,6 +234,7 @@ function DashboardLayout({
             {(['disaster', 'clinic'] as Rulebook[]).map(rb => (
               <button
                 key={rb}
+                disabled={modeLocked}
                 onClick={() => onRulebookChange(rb)}
                 className={`px-3 py-1.5 transition-colors ${
                   rulebook === rb ? 'bg-blue-700 text-white' : 'text-slate-400 hover:text-white hover:bg-[#243350]'
@@ -254,7 +258,7 @@ function DashboardLayout({
       {/* Two-column body: Dashboard Summary left, full Callback Queue right */}
       <div className="flex-1 flex min-h-0 overflow-hidden gap-4 p-4">
         {/* Left column: Dashboard Summary only */}
-        <div className="w-72 shrink-0">
+        <div className="hidden lg:block w-72 shrink-0">
           <DashboardSummary metrics={metrics} />
         </div>
 
@@ -271,6 +275,7 @@ function DashboardLayout({
       {/* Caller Detail Modal — rendered as overlay when a caller is selected */}
       {selectedCaller && (
         <CallerDetailModal
+          matchingConfig={matchingConfig}
           key={selectedCaller.id}
           caller={selectedCaller}
           readOnly={readOnly}

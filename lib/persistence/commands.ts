@@ -24,6 +24,7 @@ export function applyOperationalCommand(state: CaseState, untrusted: unknown, ti
   if (command.type === 'create_case') {
     if (!validCaller(command.caller)) throw new Error('Invalid case');
     const c = command.caller;
+    if(c.organizationId && c.organizationId!=='zianecomms-demo' && !state.activeOrganizations?.some(o=>o.id===c.organizationId&&o.rulebook===c.rulebook&&o.deploymentId===c.deploymentId)) throw Error('No matching active organization configuration');
     if (Object.values(state.callersByMode).flat().some(x => x.id === c.id)) throw new Error('Case already exists');
     const input = { ...c.engineInput!, rulebook: c.rulebook };
     const result = scoreCallerInput(input);

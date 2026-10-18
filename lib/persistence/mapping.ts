@@ -12,6 +12,7 @@ export interface ResponderRow {
 }
 export interface DatabaseSnapshot {
   revision: number;
+  activeOrganizations?: import('@/lib/organization/model').ActiveOrganization[];
   facility: { id: string; name: string; configuration: Record<string, unknown> };
   cases: CaseRow[];
   responders: ResponderRow[];
@@ -37,7 +38,7 @@ export function deserializeSnapshot(snapshot: DatabaseSnapshot, mode: CaseState[
     if (row.facility_id !== DEMO_FACILITY_ID || row.data.id !== row.id) throw new Error('Responder facility mismatch');
     return { ...row.data, activeCallers: 0, assignedCaseIds: [] };
   });
-  return synchronizeWorkload({ rulebook: mode, callersByMode: {
+  return synchronizeWorkload({ rulebook: mode, ...(snapshot.activeOrganizations?.length ? {activeOrganizations:snapshot.activeOrganizations}:{}), callersByMode: {
     disaster: callers.filter(c => c.rulebook === 'disaster'), clinic: callers.filter(c => c.rulebook === 'clinic'),
   }, responders });
 }

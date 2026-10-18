@@ -1,4 +1,5 @@
 import type { ActivityEntry, Caller, CallOutcome, Rulebook, Responder, ResponderStatus, RecommendationSnapshot } from '@/types';
+import { matchingForCaller, type ActiveOrganization } from '@/lib/organization/model';
 import { deploymentResponders } from './deployment';
 import { matchResponders } from '@/lib/matching';
 
@@ -35,6 +36,7 @@ export function recordCallbackAttempt(caller: Caller, timestamp: string): Activi
 
 export interface CaseState {
   rulebook: Rulebook;
+  activeOrganizations?: ActiveOrganization[];
   callersByMode: Record<Rulebook, Caller[]>;
   responders?: Responder[]; // optional for compatibility with existing case-only consumers
 }
@@ -76,7 +78,7 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
     return caseReducer(state, { type: 'patch', rulebook: action.rulebook, id: action.id, patch: {}, logEntry: { id: action.eventId, type: 'operator_note', timestamp: action.timestamp, operatorId: 'operator-mock-001', label: 'Operator note', detail: action.note } });
   }
   if (action.type === 'recommendation_shown') {
-    const result = matchResponders(caller, deploymentResponders(caller, state.responders ?? []));
+    const result = matchResponders(caller, deploymentResponders(caller, state.responders ?? [],state.activeOrganizations), matchingForCaller(caller,state.activeOrganizations));
     if (action.snapshot.signature !== recommendationSignature(result, caller.priority) ||
       recommendationSignature(action.snapshot.result, caller.priority) !== action.snapshot.signature) return state;
     return caseReducer(state, { type: 'patch', rulebook: action.rulebook, id: action.id,
@@ -95,9 +97,9 @@ export function caseReducer(state: CaseState, action: CaseAction): CaseState {
     const snapshot = caller.lastRecommendation;
     // Viewing a recommendation never assigns a case. Revalidate availability and the shown snapshot at approval time.
     if (!action.humanApproved || !action.operatorId.trim() || !responder || responder.status === 'offline' ||
-      !deploymentResponders(caller, [responder]).length || !responder.rulebooks.includes(caller.rulebook) || TERMINAL_STATUSES.includes(caller.status) ||
+      !deploymentResponders(caller, [responder],state.activeOrganizations).length || !responder.rulebooks.includes(caller.rulebook) || TERMINAL_STATUSES.includes(caller.status) ||
       caller.assignedResponderId === responder.id || !snapshot || snapshot.id !== action.snapshotId ||
-      snapshot.signature !== recommendationSignature(matchResponders(caller, deploymentResponders(caller, responders)), caller.priority)) return state;
+      snapshot.signature !== recommendationSignature(matchResponders(caller, deploymentResponders(caller, responders,state.activeOrganizations), matchingForCaller(caller,state.activeOrganizations)), caller.priority)) return state;
     const previous = responders.find(r => r.id === caller.assignedResponderId);
     const recommended = snapshot.result.candidates.find(c => c.responderId === snapshot.result.recommendedResponderId);
     const followed = snapshot.result.recommendedResponderId ? responder.id === snapshot.result.recommendedResponderId : undefined;

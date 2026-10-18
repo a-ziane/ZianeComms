@@ -10,6 +10,7 @@ import ResponderPicker from './ResponderPicker';
 import { PRIORITY_STYLES } from './CallbackQueue';
 
 interface CallerDetailModalProps {
+  matchingConfig?: import('@/config/matching').MatchingConfig;
   caller: Caller;
   readOnly?: boolean;
   responders?: Responder[];
@@ -97,6 +98,7 @@ const CLOSE_OUTCOMES: { value: CallOutcome; label: string; style: string }[] = [
 export default function CallerDetailModal({
   caller,
   readOnly = false,
+  matchingConfig,
   responders = [],
   onRecommendationShown,
   onClose,
@@ -417,7 +419,7 @@ export default function CallerDetailModal({
 
           {/* Sub-panels (shown above the buttons when active) */}
           {activeAction === 'responder' && (
-            <ResponderPicker caller={caller} responders={responders} onRecommendationShown={onRecommendationShown}
+            <ResponderPicker matchingConfig={matchingConfig} caller={caller} responders={responders} onRecommendationShown={onRecommendationShown}
               onAssign={(id, responderId, reason) => { onAssignResponder(id, responderId, reason); setActiveAction(null); }} />
           )}
 

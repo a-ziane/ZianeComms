@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Caller, MatchingResult, Priority, Responder, ResponderMatch } from '@/types';
+import { MATCHING_CONFIG, type MatchingConfig } from '@/config/matching';
 import { deploymentResponders } from '@/lib/cases/deployment';
 import { matchResponders } from '@/lib/matching';
 import { recommendationSignature } from '@/lib/cases';
@@ -15,7 +16,8 @@ export function MatchExplanation({ match }: { match: ResponderMatch }) {
   </ul>;
 }
 
-export default function ResponderPicker({ caller, responders, onRecommendationShown, onAssign }: {
+export default function ResponderPicker({ caller, responders, onRecommendationShown, onAssign, matchingConfig = MATCHING_CONFIG }: {
+  matchingConfig?: MatchingConfig;
   caller: Caller;
   responders: Responder[];
   onRecommendationShown?: (callerId: string, result: MatchingResult, priority: Priority) => void;
@@ -23,9 +25,9 @@ export default function ResponderPicker({ caller, responders, onRecommendationSh
 }) {
   const [showAll, setShowAll] = useState(false);
   const [reason, setReason] = useState('');
-  const { needCategory, language, coverageArea, rulebook, deploymentId } = caller;
-  const result = useMemo(() => matchResponders({ needCategory, language, coverageArea, rulebook }, deploymentResponders({ deploymentId }, responders)),
-    [needCategory, language, coverageArea, rulebook, deploymentId, responders]);
+  const { needCategory, language, coverageArea, rulebook, deploymentId, organizationId } = caller;
+  const result = useMemo(() => matchResponders({ needCategory, language, coverageArea, rulebook }, deploymentResponders({ deploymentId, organizationId }, responders), matchingConfig),
+    [needCategory, language, coverageArea, rulebook, deploymentId, organizationId, responders, matchingConfig]);
   const signature = recommendationSignature(result, caller.priority);
   const logged = useRef<string>();
   useEffect(() => {

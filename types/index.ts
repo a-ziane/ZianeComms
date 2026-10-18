@@ -169,6 +169,7 @@ export type ExperienceTag = 'emergency_medical' | 'welfare_visits' | 'evacuation
   'shelter_operations' | 'mobility_assistance' | 'medication_coordination' | 'patient_intake' | 'billing_support';
 
 export interface Responder {
+  organizationId?: string;
   deploymentId?: import('@/config/deployments').DeploymentId;
   id: string;
   name: string;
@@ -248,6 +249,7 @@ export interface CustomerFitReason {
 // ── Caller ────────────────────────────────────────────────────────────────────
 
 export interface Caller {
+  organizationId?: string;
   id: string;
   source?: 'retell' | 'offline_help_form';
   deploymentId?: import('@/config/deployments').DeploymentId;
@@ -310,6 +312,9 @@ export interface Caller {
 // ── Dashboard metrics ─────────────────────────────────────────────────────────
 
 export interface DashboardMetrics {
+  averageWaitMinutes?: number;
+  offlineRequests?: number;
+  priorityDistribution?: number[];
   incomingCalls: number;
   answeredCalls: number;
   missedCalls: number;

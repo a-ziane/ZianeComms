@@ -18,9 +18,9 @@ const NAV_ITEMS: { page: NavPage; label: string; icon: string }[] = [
 
 export default function LeftNav({ activePage, onNavigate }: LeftNavProps) {
   return (
-    <nav className="w-52 shrink-0 bg-[#1a2236] border-r border-[#2a3650] flex flex-col min-h-0">
+    <nav className="w-16 md:w-52 shrink-0 bg-[#1a2236] border-r border-[#2a3650] flex flex-col min-h-0">
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-[#2a3650]">
+      <div className="px-2 md:px-5 py-5 border-b border-[#2a3650]">
         <div className="text-lg font-black tracking-tight text-white">
           ZIANE<span className="text-blue-400">COMMS</span>
         </div>
@@ -34,22 +34,23 @@ export default function LeftNav({ activePage, onNavigate }: LeftNavProps) {
           return (
             <button
               key={page}
+              aria-label={label}
               onClick={() => onNavigate(page)}
-              className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors text-left ${
+              className={`w-full flex items-center gap-3 px-3 md:px-5 py-3 text-sm font-medium transition-colors text-left ${
                 isActive
                   ? 'bg-blue-700/30 text-white border-l-2 border-blue-400'
                   : 'text-slate-400 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
               }`}
             >
               <span className="text-base leading-none">{icon}</span>
-              <span>{label}</span>
+              <span className="hidden md:inline">{label}</span>
             </button>
           );
         })}
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-[#2a3650]">
+      <div className="hidden md:block px-5 py-4 border-t border-[#2a3650]">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-xs text-emerald-400 font-semibold">SYSTEM OPERATIONAL</span>

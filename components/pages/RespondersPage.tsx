@@ -4,7 +4,8 @@ import type { Caller, Responder, ResponderStatus, Rulebook } from '@/types';
 import { AREA_LABELS, LANGUAGE_LABELS, tagLabel } from '@/config/matching';
 import { STATUS_STYLES } from '@/components/ResponderPicker';
 
-export default function RespondersPage({ responders, callers, onStatusChange, rulebook, readOnly = false }: {
+export default function RespondersPage({ responders, callers, onStatusChange, rulebook, readOnly = false, configurationPanel }: {
+  configurationPanel?: React.ReactNode;
   readOnly?: boolean;
   responders: Responder[];
   callers: Caller[];
@@ -16,6 +17,7 @@ export default function RespondersPage({ responders, callers, onStatusChange, ru
       <div className="max-w-2xl mx-auto">
         <h1 className="text-xl font-black text-white mb-2">Responders</h1>
         <p className="text-sm text-slate-400 mb-6">{rulebook === 'disaster' ? 'Disaster' : 'Clinic'} responders — status changes update recommendations immediately. Workload counts active assignments across both modes.</p>
+        {configurationPanel}
         {(['available', 'busy', 'offline'] as ResponderStatus[]).map(status => <section key={status} className="mb-6">
           <h2 className="capitalize font-bold text-sm text-slate-300 mb-3">{status} responders ({responders.filter(r => r.status === status).length})</h2>
           <div className="space-y-3">
