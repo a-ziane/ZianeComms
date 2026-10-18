@@ -103,9 +103,9 @@ Validation results and live-migration status are recorded in the Codex developme
 
 ### Current release status and file inventory
 
-The live Task 8 migration is **not applied**. Automatic approval review rejected the new private tables, service-role access/write RPCs, and replacement load RPC as requiring explicit production schema authorization. The live working demo, Task 7 synthetic case, migration-history numbering and Retell agents remain untouched. Apply only the reviewed Task 8 migration after approval; do not attempt to realign Task 7 history.
+The live Task 8 migration was explicitly approved and **applied successfully** after the initial automatic review block. Supabase recorded version `20261018002454`, name `organization_configuration`, for the reviewed local file `20261017235346_organization_configuration.sql`. Keep that live history as recorded; do not reapply the file or attempt filename alignment. The working demo, existing cases, Task 7 synthetic case and Retell configuration remain intact.
 
-Local validation: **385/385 tests pass**, comprising all 341 existing tests unchanged and 44 focused Task 8 tests. TypeScript and lint pass. Production builds pass. Isolated Chromium verification covers dental onboarding, draft refresh, human suggestion approval, approved knowledge, responder registration, matching-weight edits, activation/refresh, active provider-variable preview, original Disaster case preservation, Task 7 Algeria controls and phone-width layout. Local PostgreSQL tests execute the actual checked-in migrations and existing RPCs; this is not a claim of live Task 8 persistence before approval.
+Local validation: **385/385 tests pass**, comprising all 341 existing tests unchanged and 44 focused Task 8 tests. TypeScript and lint pass. Production builds pass. Isolated Chromium verification covers dental onboarding, draft refresh, human suggestion approval, approved knowledge, responder registration, matching-weight edits, activation/refresh, active provider-variable preview, original Disaster case preservation, Task 7 Algeria controls and phone-width layout. Local PostgreSQL tests execute the actual checked-in migrations and existing RPCs; the separately authorized live persistence results are below.
 
 Files added:
 
@@ -122,3 +122,13 @@ Existing files extended:
 - `README.md`, `docs/codex-log.md`.
 
 No changes to Priority Engine weights/thresholds, generic Matching Engine arithmetic, existing tests, provider modules, package versions, environment values or `docs/bob-log.md`. No commit, push, app deployment or later feature task is included.
+
+### Authorized live persistence verification
+
+One fictional organization was created and activated: **Ziane Dental Demo — SYNTHETIC Task 8 Verification**, ID `org-6e8a786d-066f-401d-a18e-9abb0025dc5a`. Its only new responder is **SYNTHETIC Task 8 Dental Coordinator**, scoped to that organization. Activation creates exactly one immutable version (v1), even when the same command is replayed. A saved draft-only edit leaves the active snapshot unchanged. The final draft was restored to the fictional baseline.
+
+The active variable payload contains the approved questionnaire and three explicitly fictional approved knowledge items; an unapproved verification note stays excluded. Draft configuration and active versions survive fresh server reads. No provider interaction or agent publication was performed.
+
+Before/after fingerprints verify all 19 existing cases and 10 existing responders are unchanged, including timestamps. Total responders are now 11, with only the one new synthetic organization responder added. Facility configuration and Retell call bindings are unchanged. No live case was added or deleted. New tables have RLS, anonymous configuration RPC access is denied, and the service role cannot update published version rows. The temporary live test harness was removed.
+
+Post-migration security advisors report the intentional service-only/default-deny RLS tables (20 no-policy informational notices), plus the same two pre-existing platform `public.rls_auto_enable()` SECURITY DEFINER warnings. No new warning category was introduced by Task 8. Those unrelated platform permissions were not changed. References: [anonymous execution guidance](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable), [authenticated execution guidance](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
