@@ -5,10 +5,16 @@ import { caseReducer, type CaseAction, type CaseState } from '@/lib/cases';
 import { applyOperationalCommand } from '@/lib/persistence/commands';
 import { deviceStore, withDeviceLock } from '@/lib/offline/storage';
 import { cacheSnapshot, OPERATOR_KEY, safeOfflineAction, syncActions, type LoadResult, type OperatorCache, type QueuedAction } from '@/lib/offline/queue';
+import { usePublicDemoCases } from './usePublicDemoCases';
 import { connected, useConnectivity } from './useConnectivity';
 
 const EMPTY_STATE: CaseState = { rulebook: 'disaster', callersByMode: { disaster: DISASTER_CALLERS, clinic: CLINIC_CALLERS }, responders: MOCK_RESPONDERS };
-export function usePersistentCases() {
+export function usePersistentCases(publicDemo = false) {
+  const privateCases = useDatabaseCases(!publicDemo);
+  const demoCases = usePublicDemoCases(publicDemo);
+  return publicDemo ? demoCases : privateCases;
+}
+function useDatabaseCases(enabled: boolean) {
   const network = useConnectivity();
   const [state, setState] = useState<CaseState>(EMPTY_STATE);
   const current = useRef<LoadResult>({ state: EMPTY_STATE, revision: 0 });
@@ -59,7 +65,7 @@ export function usePersistentCases() {
       setStatus(connected() ? 'error' : 'offline'); setError((e as Error).message);
     }
   }, [apply, displayCache, request]);
-  useEffect(() => { void reload(); }, [reload, network.online]);
+  useEffect(() => { if (enabled) void reload(); }, [reload, network.online, enabled]);
   const dispatch = useCallback((action: CaseAction) => {
     if (action.type === 'switch_mode') { const next = caseReducer(current.current.state, action); current.current.state = next; setState(next); return; }
     if (!loaded.current || conflict) { setError('Load saved cases and resolve conflicts before changing this case.'); return; }

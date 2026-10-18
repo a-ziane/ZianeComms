@@ -1,16 +1,21 @@
 'use client';
 import {createContext,useContext,useEffect,useState,useCallback,useRef,type ReactNode} from 'react';
 import {newOrganization,DEFAULT_ORGANIZATION,type OrganizationConfig,type OrganizationRecord} from '@/lib/organization/model';
+import {PublicOrganizationProvider} from './PublicOrganizationProvider';
 import {deviceStore} from '@/lib/offline/storage';
 interface PendingWrite {id:string;revision:number;commandId:string;operation:'create'|'save'|'activate';config:OrganizationConfig}
-interface ContextValue {
+export interface ContextValue {
+ publicDemo?:boolean;
  records:OrganizationRecord[];selectedId:string;select:(id:string)=>void;record:OrganizationRecord|undefined;draft:OrganizationConfig|undefined;
  edit:(config:OrganizationConfig)=>void;save:(activate?:boolean)=>Promise<boolean>;create:(dental:boolean)=>Promise<void>;
  reload:()=>Promise<void>;discard:()=>Promise<void>;error:string;busy:boolean;dirty:boolean;integrations:Record<string,string>;pending:boolean;
 }
-const Context=createContext<ContextValue|null>(null);
+export const Context=createContext<ContextValue|null>(null);
 const SELECTION='ziane-selected-organization';
-export function OrganizationProvider({children}:{children:ReactNode}){
+export function OrganizationProvider({children,publicDemo=false}:{children:ReactNode;publicDemo?:boolean}){
+ return publicDemo?<PublicOrganizationProvider>{children}</PublicOrganizationProvider>:<PrivateOrganizationProvider>{children}</PrivateOrganizationProvider>;
+}
+function PrivateOrganizationProvider({children}:{children:ReactNode}){
  const [records,setRecords]=useState<OrganizationRecord[]>([]),[selectedId,setSelectedId]=useState(DEFAULT_ORGANIZATION),[draft,setDraft]=useState<OrganizationConfig>();
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[integrations,setIntegrations]=useState<Record<string,string>>({});
  const [pending,setPending]=useState(false);const operation=useRef<PendingWrite>();const draftRef=useRef(draft);const revision=useRef(0);
@@ -59,7 +64,7 @@ export function OrganizationBar(){
  const o=useOrganization();
  return <section className="flex flex-wrap gap-3 items-center border border-slate-700 rounded-xl p-3 text-sm bg-[#131f33]">
   <label>Organization <select aria-label="Organization workspace" value={o.selectedId} className="ml-2 bg-slate-800 p-2 rounded max-w-64" onChange={e=>o.select(e.target.value)}><option value={DEFAULT_ORGANIZATION}>Working Disaster / Clinic demo</option>{o.records.map(r=><option key={r.id} value={r.id}>{r.active?.configuration.name||r.draft.name||'Untitled draft'}{r.active?` · Active v${r.active.version}`:' · Draft'}</option>)}</select></label>
-  <a className="text-blue-300 underline" href="/onboarding">Organization onboarding</a>
+  <a className="text-blue-300 underline" href={o.publicDemo?"/onboarding":"/operator/onboarding"}>Organization onboarding</a>
   {o.record&&<span className="text-xs text-slate-400">{o.dirty?'Unsaved draft changes':'Draft saved'} · {o.record.active?`Active v${o.record.active.version}`:'Not activated'}</span>}
   {o.error&&<p role="alert" className="w-full text-amber-300 text-xs">{o.error} <button className="underline" onClick={()=>void o.reload()}>Reload server configuration</button></p>}
  {o.pending&&<button className="text-xs underline text-amber-300" onClick={()=>{if(window.confirm('Discard the pending local save intention and reload server configuration? Already accepted versions stay in history.'))void o.discard();}}>Discard pending intention and review server state</button>}</section>;

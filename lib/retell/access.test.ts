@@ -17,11 +17,11 @@ describe('Operator protection for real integration data',()=>{
     expect(operatorAccess('Basic !!!',password)).toBe(false);expect(operatorAccess(auth,'short')).toBe(false);
     expect(operatorAccess('Basic '+btoa('someone:'+password),password)).toBe(false);
   });
-  it('gates the dashboard in middleware while allowing provider-signed webhook requests through',async()=>{
+  it('gates live operations in middleware while allowing provider-signed webhook requests through',async()=>{
     vi.stubEnv('RETELL_ENABLED','true');vi.stubEnv('OPERATIONS_PASSWORD',password);
-    expect((await middleware(new NextRequest('https://example.test/'))).status).toBe(401);
+    expect((await middleware(new NextRequest('https://example.test/operator'))).status).toBe(401);
     expect((await middleware(new NextRequest('https://example.test/api/webhooks/retell'))).status).toBe(200);
-    const ok=await middleware(new NextRequest('https://example.test/',{headers:{authorization:auth}}));expect(await ok.text()).toBe('passthrough');
+    const ok=await middleware(new NextRequest('https://example.test/operator',{headers:{authorization:auth}}));expect(await ok.text()).toBe('passthrough');
   });
   it('API GET and POST reject unauthorized access even without middleware',async()=>{
     vi.stubEnv('RETELL_ENABLED','true');vi.stubEnv('OPERATIONS_PASSWORD',password);

@@ -1,5 +1,5 @@
 /* Demo offline shells + immutable application assets only. Never cache API responses or protected documents. */
-const CACHE = 'ziane-shell-task7-v1';
+const CACHE = 'ziane-shell-public-demo-v2';
 const SHELLS = ['/help', '/offline'];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
