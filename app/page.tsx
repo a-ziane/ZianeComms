@@ -1,2 +1,2 @@
-import App from '@/components/OperationsApp';
-export default function Page(){return <App/>;}
+import ProductExperience from '@/components/product/ProductExperience';
+export default function Page(){return <ProductExperience/>;}

@@ -1,0 +1,36 @@
+const {chromium}=require('/Users/amaniziane/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+(async()=>{
+ const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];
+ page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ await page.goto('http://localhost:3021');
+ await page.evaluate(async()=>{localStorage.clear();for(const name of (await indexedDB.databases()).map(d=>d.name).filter(Boolean))await new Promise(resolve=>{const r=indexedDB.deleteDatabase(name);r.onsuccess=r.onerror=r.onblocked=()=>resolve();});});
+ await page.reload();
+ await page.getByText('What do you need?').waitFor();
+ await page.getByRole('button',{name:/Send demo help request/}).click();
+ await page.getByText('Your request is received').waitFor();
+ await page.getByRole('button',{name:/COMMAND/}).click();
+ await page.getByRole('button',{name:/Select Samira Bennett/}).waitFor();
+ await page.getByText('Why this priority?').waitFor();
+ await page.getByRole('button',{name:/Responder matching/}).click();
+ await page.getByText('The right skills. The right response.').waitFor();
+ await page.getByRole('button',{name:/RESPONDER/}).click();
+ await page.getByText('Field workspace').waitFor();
+ await page.getByRole('button',{name:/COMMAND/}).click();
+ await page.getByRole('button',{name:/DEMO MODE/}).click();
+ await page.getByRole('button',{name:/Recovery escalation/}).click();
+ await page.getByText('Recovery · oxygen equipment stopped').first().waitFor();
+ await page.getByText('Safety escalation').waitFor();
+ for(const label of ['911','311','211','DEFENSE SUPPORT','CUSTOM']){await page.getByRole('button',{name:new RegExp('^'+label)}).first().click();}
+ await page.getByRole('button',{name:/DEMO MODE/}).click();
+ await page.getByRole('button',{name:/Algeria offline/}).click();
+ await page.getByText(/Algeria · Offline demonstration/).waitFor();
+ await page.getByRole('button',{name:'Save Algeria request'}).click();
+ await page.getByText(/1 saved on device/).first().waitFor();
+ await page.getByRole('button',{name:/Reconnect & synchronize/}).click();
+ await page.getByText(/acknowledged by local demo receiver/).waitFor();
+ const live=await page.request.get('http://localhost:3021/operator');if(live.status()!==401)throw Error('Protected live operator route returned '+live.status());
+ if(errors.length)throw Error(errors.join('\n'));
+ await page.screenshot({path:'/private/tmp/ziane-final-command.png',fullPage:true});
+ console.log('PASS: civilian → command → matching → responder → recovery P0 → all five lines → Algeria offline/save/reconnect; live operator route remains 401.');
+ await browser.close();
+})().catch(e=>{console.error(e);process.exit(1);});

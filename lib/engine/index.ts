@@ -21,6 +21,7 @@ import type {
   Priority,
   ScoreCategory,
   AgentOutcome,
+  RulebookConfig,
 } from '@/types';
 import { RULEBOOKS } from '@/config/rulebooks';
 import { CATEGORY_CAPS } from '@/config/engine';
@@ -37,8 +38,7 @@ export interface EngineResult {
 
 // ── Main engine function ──────────────────────────────────────────────────────
 
-export function scoreCallerInput(input: EngineInput): EngineResult {
-  const rulebook = RULEBOOKS[input.rulebook] ?? RULEBOOKS['disaster'];
+export function scoreCallerInput(input: EngineInput, rulebook: RulebookConfig = RULEBOOKS[input.rulebook] ?? RULEBOOKS['disaster']): EngineResult {
   const breakdown: ScoreBreakdown[] = [];
   let rawScore = 0;
   let hardEscalation = false;

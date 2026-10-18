@@ -138,3 +138,15 @@ Organization responders use the existing responder directory and Matching Engine
 The website root `/` and `/onboarding` open without a username or password. They use fictional fixtures, including Amani’s toothache case in Ziane Org, with the existing deterministic engines. Public case/configuration changes remain on that browser’s device in separate `public-demo-*` storage; they never load the live operator cache or call operational, organization, Retell or Twilio APIs. Public demo configuration is a fictional copy, independent from live organization versions. Seeded callers cannot launch real Recovery Chat.
 
 Live database operations remain at `/operator` and `/operator/onboarding`, protected by the existing operator credential. Keep `OPERATIONS_PASSWORD` and provider credentials configured in Vercel; no environment change is needed to open the public demo. Provider webhook signature checks and private API authorization remain unchanged. Public caller intake `/help` retains its existing write-only behavior.
+
+### Command + Civilian hackathon experience
+
+The public root presents three instant interfaces over one device-saved demo workspace: Civilian, Responder and Command. The existing workspace remains at `/workspace`; protected live operations remain at `/operator`.
+
+The five presentation lines are 911, 311, 211, Defense Support and Custom. They are clearly labelled prototype configurations and do not claim official system integrations. Each preset supplies explicit structured demo facts to the existing generic deterministic Priority Engine. Custom reads the active public organization configuration. Responder recommendations use the existing Matching Engine and still require human approval.
+
+The operational map is a local schematic. LA case and responder positions are synthetic area-level projections unless the civilian explicitly grants device-location permission. Unknown and Algeria area-only locations stay unpinned. The interface never converts an area label into exact coordinates or claims route distance.
+
+The demo tray supports normal dental operations, 911, 311, 211, defensive personnel/logistics support, structured recovery escalation and Algeria offline store-and-forward. Synthetic offline requests use the real IndexedDB queue and acknowledgement logic against an isolated in-browser demo receiver; `/help` remains the real Supabase-backed flow.
+
+90-second path: open Civilian, select 211 and send the prefilled displaced-family request. Switch to Command to show its calculated priority, area map and explanation. Open Responder Matching, then Responder. Use Demo Mode → Recovery escalation to add explicitly confirmed oxygen/power facts and show the same case become Priority 0. Tap the five line selectors, then Demo Mode → Algeria offline, Save Algeria request, and Reconnect & synchronize.

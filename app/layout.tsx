@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ZianeComms — Missed-Caller Recovery',
-  description: 'Missed-caller recovery and prioritization system for high-volume operations.',
+  title: 'ZianeComms — Urgent people first. Nobody forgotten.',
+  description: 'Unified communications and human-led response. Civilian, responder and command experiences on one explainable platform.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
